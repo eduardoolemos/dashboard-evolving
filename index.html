@@ -530,40 +530,6 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
           <button class="sort-btn" id="topSortAscBtn" onclick="setTopSortOrder('asc')">Menor → Maior</button>
         </div>
       </div>
-      <details class="metric-chooser">
-        <summary class="metric-summary">
-          <span class="metric-summary-label">Selecionar métricas visíveis <span class="metric-selected-count" id="metricSelectedCount">(0)</span></span>
-          <span class="metric-summary-right">Clique para abrir</span>
-        </summary>
-        <div class="metric-chooser-content">
-          <div class="metric-chooser-head" style="margin-top:10px;">
-            <div class="metric-chooser-title">Marque o que deseja ver</div>
-            <div class="metric-chooser-actions">
-              <button type="button" class="metric-action-btn" onclick="selectAllVisibleMetrics(event)">Marcar tudo</button>
-              <button type="button" class="metric-action-btn" onclick="clearAllVisibleMetrics(event)">Limpar tudo</button>
-            </div>
-          </div>
-          <div class="metric-chooser-grid" id="metricChooserGrid">
-            <label class="metric-chip"><input type="checkbox" data-metric="spend" onchange="onVisibleMetricsChange()"> Verba</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="leads" onchange="onVisibleMetricsChange()"> Leads</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cpl" onchange="onVisibleMetricsChange()"> CPL</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cpm" onchange="onVisibleMetricsChange()"> CPM</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cpc" onchange="onVisibleMetricsChange()"> CPC</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="ctr" onchange="onVisibleMetricsChange()"> CTR</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="mql" onchange="onVisibleMetricsChange()"> MQLs</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cpmql" onchange="onVisibleMetricsChange()"> CPMQL</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="agendada" onchange="onVisibleMetricsChange()"> Contato de Confirmação</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="confirmada" onchange="onVisibleMetricsChange()"> Call Confirmada</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="noShow" onchange="onVisibleMetricsChange()"> No Show</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="callFeita" onchange="onVisibleMetricsChange()"> Call Feita</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cAgendada" onchange="onVisibleMetricsChange()"> Custo Contato</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cConfirmada" onchange="onVisibleMetricsChange()"> Custo Confirmada</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cNoShow" onchange="onVisibleMetricsChange()"> Custo No-Show</label>
-            <label class="metric-chip"><input type="checkbox" data-metric="cCallFeita" onchange="onVisibleMetricsChange()"> Custo Call Feita</label>
-          </div>
-        </div>
-      </details>
-
       <div class="grid-2" style="margin-bottom:16px;display:none;">
         <div class="card">
           <div class="card-title">Top Ads</div>
@@ -664,6 +630,40 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
           </div>
         </div>
       </div>
+
+      <details class="metric-chooser">
+        <summary class="metric-summary">
+          <span class="metric-summary-label">Selecionar métricas visíveis <span class="metric-selected-count" id="metricSelectedCount">(0)</span></span>
+          <span class="metric-summary-right">Clique para abrir</span>
+        </summary>
+        <div class="metric-chooser-content">
+          <div class="metric-chooser-head" style="margin-top:10px;">
+            <div class="metric-chooser-title">Marque o que deseja ver</div>
+            <div class="metric-chooser-actions">
+              <button type="button" class="metric-action-btn" onclick="selectAllVisibleMetrics(event)">Marcar tudo</button>
+              <button type="button" class="metric-action-btn" onclick="clearAllVisibleMetrics(event)">Limpar tudo</button>
+            </div>
+          </div>
+          <div class="metric-chooser-grid" id="metricChooserGrid">
+            <label class="metric-chip"><input type="checkbox" data-metric="spend" onchange="onVisibleMetricsChange()"> Verba</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="leads" onchange="onVisibleMetricsChange()"> Leads</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpl" onchange="onVisibleMetricsChange()"> CPL</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpm" onchange="onVisibleMetricsChange()"> CPM</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpc" onchange="onVisibleMetricsChange()"> CPC</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="ctr" onchange="onVisibleMetricsChange()"> CTR</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="mql" onchange="onVisibleMetricsChange()"> MQLs</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpmql" onchange="onVisibleMetricsChange()"> CPMQL</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="agendada" onchange="onVisibleMetricsChange()"> Contato de Confirmação</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="confirmada" onchange="onVisibleMetricsChange()"> Call Confirmada</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="noShow" onchange="onVisibleMetricsChange()"> No Show</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="callFeita" onchange="onVisibleMetricsChange()"> Call Feita</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cAgendada" onchange="onVisibleMetricsChange()"> Custo Contato</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cConfirmada" onchange="onVisibleMetricsChange()"> Custo Confirmada</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cNoShow" onchange="onVisibleMetricsChange()"> Custo No-Show</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cCallFeita" onchange="onVisibleMetricsChange()"> Custo Call Feita</label>
+          </div>
+        </div>
+      </details>
 
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header-row">
