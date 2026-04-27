@@ -871,13 +871,43 @@ async function generateShortShareLink() {
   try {
     writeSharedCfgToUrl(buildSharePayload());
     const longUrl = window.location.href;
-    const endpoint = `https://api.shrtco.de/v2/shorten?url=${encodeURIComponent(longUrl)}`;
-    const res = await fetch(endpoint);
-    const data = await res.json();
-    if (!res.ok || !data?.ok || !data?.result?.full_short_link) {
-      throw new Error('Serviço de encurtamento indisponível.');
+    const providers = [
+      async () => {
+        const endpoint = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`;
+        const res = await fetch(endpoint);
+        const txt = (await res.text()).trim();
+        if (!res.ok || !/^https?:\/\//i.test(txt)) throw new Error('tinyurl falhou');
+        return txt;
+      },
+      async () => {
+        const endpoint = `https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`;
+        const res = await fetch(endpoint);
+        const txt = (await res.text()).trim();
+        if (!res.ok || !/^https?:\/\//i.test(txt)) throw new Error('is.gd falhou');
+        return txt;
+      },
+      async () => {
+        const endpoint = `https://api.shrtco.de/v2/shorten?url=${encodeURIComponent(longUrl)}`;
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        const short = data?.result?.full_short_link || data?.result?.short_link;
+        if (!res.ok || !data?.ok || !short) throw new Error('shrtco falhou');
+        return /^https?:\/\//i.test(short) ? short : `https://${short}`;
+      }
+    ];
+
+    let shortUrl = '';
+    let lastErr = null;
+    for (const run of providers) {
+      try {
+        shortUrl = await run();
+        if (shortUrl) break;
+      } catch (e) {
+        lastErr = e;
+      }
     }
-    const shortUrl = data.result.full_short_link;
+    if (!shortUrl) throw lastErr || new Error('Serviço de encurtamento indisponível.');
+
     const copied = await copyToClipboard(shortUrl);
     if (status) {
       status.textContent = copied
