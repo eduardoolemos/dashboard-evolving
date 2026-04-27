@@ -68,6 +68,7 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 
 .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
 #kpiTrafego { grid-template-columns:repeat(3,1fr); }
+.kpi-span-3 { grid-column: span 3; }
 .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; overflow:hidden; transition:border-color 0.2s; }
 .kpi-card:hover { border-color:var(--border2); }
 .kpi-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
@@ -235,6 +236,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 @media (max-width: 900px) {
   .kpi-grid { grid-template-columns:repeat(2,1fr); }
   #kpiTrafego { grid-template-columns:repeat(2,1fr); }
+  .kpi-span-3 { grid-column: span 2; }
   .grid-2, .grid-3 { grid-template-columns:1fr; }
   .col-span-2 { grid-column:span 1; }
   .container { padding:20px 16px; }
@@ -2703,6 +2705,8 @@ function renderTrafego() {
   const custoLpv = lpv > 0 && spend > 0 ? spend / lpv : 0;
 
   const primaryHtml = `
+    <div class="kpi-card red kpi-span-3"><div class="kpi-label"><span class="metric-dot dot-red"></span>Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">base de custos no período</div></div>
+
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Leads Captados</div><div class="kpi-value teal">${fmt(leads)}</div><div class="kpi-sub">conversões no período</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo por Lead (CPL)</div><div class="kpi-value gold small">${leads > 0 ? brl(cpl) : '—'}</div><div class="kpi-sub">verba ÷ leads</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Taxa Qualificação</div><div class="kpi-value purple">${txQualificacao > 0 ? pct(txQualificacao) : '—'}</div><div class="kpi-sub">MQL ÷ Leads</div></div>
@@ -2725,7 +2729,7 @@ function renderTrafego() {
 
     <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Custo No-Show</div><div class="kpi-value red small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx No-Show</div><div class="kpi-value purple">${txNoShow > 0 ? pct(txNoShow) : '—'}</div><div class="kpi-sub">no-show ÷ confirmada</div></div>
-    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">base de custos</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Landing Views</div><div class="kpi-value teal">${fmt(lpv)}</div><div class="kpi-sub">apoio de contexto</div></div>
   `;
 
   const secondaryHtml = `
