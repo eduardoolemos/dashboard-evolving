@@ -864,7 +864,8 @@ function writeSharedCfgToUrl(payload) {
     const encoded = encodeShareCfg(payload);
     if (!encoded) return;
     const u = new URL(window.location.href);
-    u.searchParams.set('cfg', encoded);
+    u.searchParams.delete('cfg');
+    u.hash = `cfg=${encoded}`;
     window.history.replaceState({}, '', u.toString());
   } catch {}
 }
