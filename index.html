@@ -2725,8 +2725,9 @@ function renderTrafego() {
 
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-green"></span>Call Feita</div><div class="kpi-value teal">${fmt(callFeita)}</div><div class="kpi-sub">etapa call feita</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Call Feita</div><div class="kpi-value gold small">${callFeita > 0 ? brl(custoCallFeita) : '—'}</div><div class="kpi-sub">verba ÷ call feita</div></div>
-    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-red"></span>No-Show</div><div class="kpi-value purple">${fmt(noShow)}</div><div class="kpi-sub">perda na etapa</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Call Feita</div><div class="kpi-value purple">—</div><div class="kpi-sub">aguardando métrica de venda</div></div>
 
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-red"></span>No-Show</div><div class="kpi-value purple">${fmt(noShow)}</div><div class="kpi-sub">perda na etapa</div></div>
     <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Custo No-Show</div><div class="kpi-value red small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx No-Show</div><div class="kpi-value purple">${txNoShow > 0 ? pct(txNoShow) : '—'}</div><div class="kpi-sub">no-show ÷ confirmada</div></div>
   `;
