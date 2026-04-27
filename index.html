@@ -2721,7 +2721,7 @@ function renderTrafego() {
 
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Reunião Confirmada</div><div class="kpi-value teal">${fmt(confirmadas)}</div><div class="kpi-sub">call confirmada</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Confirmada</div><div class="kpi-value gold small">${confirmadas > 0 ? brl(custoConfirmada) : '—'}</div><div class="kpi-sub">verba ÷ confirmadas</div></div>
-    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Confirmada → Call Feita</div><div class="kpi-value purple">${txConfirmadaToCallFeita > 0 ? pct(txConfirmadaToCallFeita) : '—'}</div><div class="kpi-sub">call feita ÷ confirmada</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Confirmada → Call Feita</div><div class="kpi-value purple">${pct(txConfirmadaToCallFeita)}</div><div class="kpi-sub">call feita ÷ confirmada</div></div>
 
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-green"></span>Call Feita</div><div class="kpi-value teal">${fmt(callFeita)}</div><div class="kpi-sub">etapa call feita</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Call Feita</div><div class="kpi-value gold small">${callFeita > 0 ? brl(custoCallFeita) : '—'}</div><div class="kpi-sub">verba ÷ call feita</div></div>
@@ -2729,7 +2729,6 @@ function renderTrafego() {
 
     <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Custo No-Show</div><div class="kpi-value red small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx No-Show</div><div class="kpi-value purple">${txNoShow > 0 ? pct(txNoShow) : '—'}</div><div class="kpi-sub">no-show ÷ confirmada</div></div>
-    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Landing Views</div><div class="kpi-value teal">${fmt(lpv)}</div><div class="kpi-sub">apoio de contexto</div></div>
   `;
 
   const secondaryHtml = `
