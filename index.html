@@ -580,6 +580,8 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
               <th>Custo Agendada</th>
               <th>Reun. Confirmada</th>
               <th>Custo Confirmada</th>
+              <th>No-Show</th>
+              <th>Custo No-Show</th>
               <th>Call Feita</th>
               <th>Custo Call Feita</th>
               <th>Conv. %</th>
@@ -1934,6 +1936,7 @@ function renderPerfTable(adsRows) {
   const mqlRows = leadRows.filter(isMqlRow);
   const agRows = getStageRowsByAliases(['Contato de Confirmacao', 'Contato de Confirmação']);
   const confRows = getStageRowsByAliases(['Call Confirmada', 'Reuniao Confirmada', 'Reunião Confirmada']);
+  const noShowRows = getStageRowsByAliases(['No-Show', 'No Show']);
   const callRows = getStageRowsByAliases(['Call Feita']);
 
   const convUtmKey = currentLevel === 'campaign' ? 'utm_campaign'
@@ -1954,7 +1957,7 @@ function renderPerfTable(adsRows) {
     if (!map[key]) {
       map[key] = {
         spend:0, imp:0, clicks:0, lpv:0, leads:0, mql:0,
-        agendada:0, confirmada:0, callFeita:0, displayName: adsName
+        agendada:0, confirmada:0, noShow:0, callFeita:0, displayName: adsName
       };
     }
     map[key].spend  += getSpend(r);
@@ -1981,6 +1984,7 @@ function renderPerfTable(adsRows) {
   addCount(mqlRows, 'mql');
   addCount(agRows, 'agendada');
   addCount(confRows, 'confirmada');
+  addCount(noShowRows, 'noShow');
   addCount(callRows, 'callFeita');
 
   const getSortValue = (v) => {
@@ -2013,6 +2017,7 @@ function renderPerfTable(adsRows) {
     const cpmql_c = v.mql > 0 ? v.spend / v.mql : 0;
     const cAg = v.agendada > 0 ? v.spend / v.agendada : 0;
     const cConf = v.confirmada > 0 ? v.spend / v.confirmada : 0;
+    const cNoShow = v.noShow > 0 ? v.spend / v.noShow : 0;
     const cCall = v.callFeita > 0 ? v.spend / v.callFeita : 0;
     const conv_c = v.clicks > 0 && v.leads > 0 ? v.leads / v.clicks * 100 : 0;
 
@@ -2033,6 +2038,8 @@ function renderPerfTable(adsRows) {
       <td class="td-gold">${v.agendada > 0 ? brl(cAg) : '<span class="td-na">—</span>'}</td>
       <td class="td-purple">${v.confirmada > 0 ? fmt(v.confirmada) : '<span class="td-na">—</span>'}</td>
       <td class="td-gold">${v.confirmada > 0 ? brl(cConf) : '<span class="td-na">—</span>'}</td>
+      <td class="td-purple">${v.noShow > 0 ? fmt(v.noShow) : '<span class="td-na">—</span>'}</td>
+      <td class="td-gold">${v.noShow > 0 ? brl(cNoShow) : '<span class="td-na">—</span>'}</td>
       <td class="td-purple">${v.callFeita > 0 ? fmt(v.callFeita) : '<span class="td-na">—</span>'}</td>
       <td class="td-gold">${v.callFeita > 0 ? brl(cCall) : '<span class="td-na">—</span>'}</td>
       <td class="td-purple">${conv_c > 0 ? pct(conv_c) : '<span class="td-na">—</span>'}</td>
@@ -2040,7 +2047,7 @@ function renderPerfTable(adsRows) {
   }).join('');
 
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;color:var(--text2);padding:28px;">Nenhum dado para o filtro atual</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="21" style="text-align:center;color:var(--text2);padding:28px;">Nenhum dado para o filtro atual</td></tr>';
   }
 }
 
