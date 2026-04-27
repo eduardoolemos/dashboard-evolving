@@ -184,6 +184,9 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 .config-field input { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; padding:11px 14px; color:var(--white); font-family:var(--font-mono); font-size:12px; outline:none; transition:border-color 0.2s; }
 .config-field input:focus { border-color:var(--teal); }
 .config-hint { font-size:11px; color:var(--text3); margin-top:6px; }
+.funnel-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.funnel-input { flex:1; min-width:180px; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; padding:9px 10px; color:var(--white); font-family:var(--font-mono); font-size:11px; outline:none; }
+.funnel-input:focus { border-color:var(--teal); }
 .stage-config-wrap { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
 .stage-config-title { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text2); margin-bottom:10px; }
 .stage-config-list { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
@@ -272,6 +275,16 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <label>Link da planilha publicada (CSV ou Publicada na Web)</label>
         <input type="text" id="sheetLink" placeholder="Cole aqui a URL publicada da planilha">
         <div class="config-hint">Usado para carregar dados e buscar GIDs automaticamente.</div>
+      </div>
+      <div class="config-field">
+        <label>Página/Funil ativo</label>
+        <div class="funnel-row">
+          <select class="camp-select" id="configFunnelSelect" onchange="onConfigFunnelChange()"></select>
+          <input class="funnel-input" id="newFunnelName" type="text" placeholder="Nome da nova página">
+          <button class="btn-stage-add" onclick="addFunnelPage()">+ Nova Página</button>
+          <button class="btn-stage-remove" onclick="removeFunnelPage()">Excluir Página</button>
+        </div>
+        <div class="config-hint">Cada página mantém seus próprios GIDs e etapas.</div>
       </div>
       <div class="config-field">
         <label>GID da aba "TRACK ETAPAS"</label>
@@ -394,6 +407,10 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
   <div id="tabTrafego" style="display:none;">
 
     <div class="filter-bar">
+      <div class="filter-row">
+        <span class="filter-label">Página:</span>
+        <select class="camp-select" id="trafficFunnelSelect" onchange="onTrafficFunnelChange()"></select>
+      </div>
       <div class="filter-row">
         <span class="filter-label">Período:</span>
         <div class="period-tabs">
@@ -617,6 +634,8 @@ const DEFAULT_STAGE_CONFIGS = [
   { name: 'Call Feita', gid: '' }
 ];
 let STAGE_CONFIGS = DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }));
+let FUNNELS = [];
+let activeFunnelId = 'default';
 
 try {
   const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
@@ -625,6 +644,20 @@ try {
   if (saved.gidEtapas) GID_ETAPAS = saved.gidEtapas;
   if (saved.gidConv)   GID_CONV   = saved.gidConv;
   if (saved.gidAds)    GID_ADS    = saved.gidAds;
+  if (saved.activeFunnelId) activeFunnelId = String(saved.activeFunnelId);
+  if (Array.isArray(saved.funnels) && saved.funnels.length) {
+    FUNNELS = saved.funnels.map((f, i) => ({
+      id: String(f.id || `funnel_${i+1}`),
+      name: String(f.name || `Página ${i+1}`),
+      gidEtapas: String(f.gidEtapas || ''),
+      gidConv: String(f.gidConv || ''),
+      gidAds: String(f.gidAds || ''),
+      stageConfigs: Array.isArray(f.stageConfigs) ? f.stageConfigs.map(s => ({
+        name: String(s?.name || '').trim(),
+        gid: String(s?.gid || '').trim()
+      })) : DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }))
+    }));
+  }
   if (Array.isArray(saved.stageConfigs) && saved.stageConfigs.length) {
     STAGE_CONFIGS = saved.stageConfigs.map(s => ({
       name: String(s?.name || '').trim(),
@@ -633,6 +666,16 @@ try {
   }
 } catch {}
 EXPORT_BASE = SHEET_ID ? `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` : '';
+if (!FUNNELS.length) {
+  FUNNELS = [{
+    id: 'default',
+    name: 'Principal',
+    gidEtapas: GID_ETAPAS,
+    gidConv: GID_CONV,
+    gidAds: GID_ADS,
+    stageConfigs: STAGE_CONFIGS.map(s => ({ ...s }))
+  }];
+}
 
 const TELA_ORDER = [0,1,2,3,4,5,6,7,8,9];
 const TELA_NAMES = {
@@ -675,6 +718,103 @@ function switchTab(tab) {
   if (tab === 'trafego') renderTrafego();
 }
 
+function getActiveFunnel() {
+  return FUNNELS.find(f => f.id === activeFunnelId) || FUNNELS[0];
+}
+
+function applyActiveFunnelToGlobals() {
+  const f = getActiveFunnel();
+  if (!f) return;
+  activeFunnelId = f.id;
+  GID_ETAPAS = String(f.gidEtapas || '');
+  GID_CONV = String(f.gidConv || '');
+  GID_ADS = String(f.gidAds || '');
+  STAGE_CONFIGS = (f.stageConfigs || DEFAULT_STAGE_CONFIGS).map(s => ({ ...s }));
+}
+
+function syncGlobalsToActiveFunnel() {
+  const idx = FUNNELS.findIndex(f => f.id === activeFunnelId);
+  if (idx < 0) return;
+  FUNNELS[idx] = {
+    ...FUNNELS[idx],
+    gidEtapas: String(GID_ETAPAS || ''),
+    gidConv: String(GID_CONV || ''),
+    gidAds: String(GID_ADS || ''),
+    stageConfigs: STAGE_CONFIGS.map(s => ({ ...s }))
+  };
+}
+
+function renderFunnelSelectors() {
+  const items = FUNNELS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  const cfg = document.getElementById('configFunnelSelect');
+  const traf = document.getElementById('trafficFunnelSelect');
+  if (cfg) {
+    cfg.innerHTML = items;
+    cfg.value = activeFunnelId;
+  }
+  if (traf) {
+    traf.innerHTML = items;
+    traf.value = activeFunnelId;
+  }
+}
+
+function fillConfigInputsFromGlobals() {
+  document.getElementById('gidEtapas').value = GID_ETAPAS;
+  document.getElementById('gidConversoes').value = GID_CONV;
+  document.getElementById('gidAds').value = GID_ADS;
+  renderStageConfigs();
+}
+
+function onConfigFunnelChange() {
+  syncGlobalsFromConfigInputs();
+  syncGlobalsToActiveFunnel();
+  activeFunnelId = document.getElementById('configFunnelSelect').value;
+  applyActiveFunnelToGlobals();
+  renderFunnelSelectors();
+  fillConfigInputsFromGlobals();
+}
+
+function onTrafficFunnelChange() {
+  syncGlobalsFromConfigInputs();
+  syncGlobalsToActiveFunnel();
+  activeFunnelId = document.getElementById('trafficFunnelSelect').value;
+  applyActiveFunnelToGlobals();
+  renderFunnelSelectors();
+  fillConfigInputsFromGlobals();
+  loadAll();
+}
+
+function addFunnelPage() {
+  syncGlobalsFromConfigInputs();
+  syncGlobalsToActiveFunnel();
+  const name = (document.getElementById('newFunnelName').value || '').trim() || `Página ${FUNNELS.length + 1}`;
+  const id = `funnel_${Date.now()}`;
+  FUNNELS.push({
+    id,
+    name,
+    gidEtapas: '',
+    gidConv: '',
+    gidAds: '',
+    stageConfigs: DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }))
+  });
+  activeFunnelId = id;
+  applyActiveFunnelToGlobals();
+  renderFunnelSelectors();
+  fillConfigInputsFromGlobals();
+  document.getElementById('newFunnelName').value = '';
+}
+
+function removeFunnelPage() {
+  if (FUNNELS.length <= 1) return;
+  const idx = FUNNELS.findIndex(f => f.id === activeFunnelId);
+  if (idx < 0) return;
+  FUNNELS.splice(idx, 1);
+  activeFunnelId = FUNNELS[Math.max(0, idx - 1)].id;
+  applyActiveFunnelToGlobals();
+  renderFunnelSelectors();
+  fillConfigInputsFromGlobals();
+}
+
 function renderStageConfigs() {
   const host = document.getElementById('stageConfigList');
   if (!host) return;
@@ -690,17 +830,20 @@ function renderStageConfigs() {
 function onStageConfigChange(index, field, value) {
   if (!STAGE_CONFIGS[index]) return;
   STAGE_CONFIGS[index][field] = String(value || '').trim();
+  syncGlobalsToActiveFunnel();
 }
 
 function addStageConfig() {
   STAGE_CONFIGS.push({ name: '', gid: '' });
   renderStageConfigs();
+  syncGlobalsToActiveFunnel();
 }
 
 function removeStageConfig(index) {
   STAGE_CONFIGS.splice(index, 1);
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS.push({ name: '', gid: '' });
   renderStageConfigs();
+  syncGlobalsToActiveFunnel();
 }
 
 function normalizeName(v) {
@@ -785,6 +928,8 @@ async function autoFillGidsFromSheet() {
     });
     renderStageConfigs();
 
+    syncGlobalsFromConfigInputs();
+    syncGlobalsToActiveFunnel();
     status.textContent = matched
       ? `GIDs preenchidos automaticamente: ${matched}.`
       : 'Nenhum GID novo encontrado por nome. Revise os nomes das etapas.';
@@ -2052,6 +2197,12 @@ function renderPerfTable(adsRows) {
 }
 
 // ── SAVE CONFIG ────────────────────────
+function syncGlobalsFromConfigInputs() {
+  GID_ETAPAS = document.getElementById('gidEtapas').value.trim();
+  GID_CONV   = document.getElementById('gidConversoes').value.trim();
+  GID_ADS    = document.getElementById('gidAds').value.trim();
+}
+
 function saveConfigAndLoad() {
   const parsedSheet = parseSheetLink(document.getElementById('sheetLink').value);
   if (parsedSheet?.publishedBase) PUBLISHED_BASE = parsedSheet.publishedBase;
@@ -2059,13 +2210,12 @@ function saveConfigAndLoad() {
     SHEET_ID = parsedSheet.sheetId;
     EXPORT_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
   }
-  GID_ETAPAS = document.getElementById('gidEtapas').value.trim();
-  GID_CONV   = document.getElementById('gidConversoes').value.trim();
-  GID_ADS    = document.getElementById('gidAds').value.trim();
+  syncGlobalsFromConfigInputs();
   STAGE_CONFIGS = STAGE_CONFIGS
     .map(s => ({ name: String(s.name || '').trim(), gid: String(s.gid || '').trim() }))
     .filter(s => s.name || s.gid);
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS = [{ name: '', gid: '' }];
+  syncGlobalsToActiveFunnel();
   try {
     localStorage.setItem(CFG_KEY, JSON.stringify({
       sheetId: SHEET_ID,
@@ -2073,7 +2223,9 @@ function saveConfigAndLoad() {
       gidEtapas: GID_ETAPAS,
       gidConv: GID_CONV,
       gidAds: GID_ADS,
-      stageConfigs: STAGE_CONFIGS
+      stageConfigs: STAGE_CONFIGS,
+      activeFunnelId,
+      funnels: FUNNELS
     }));
   } catch {}
   currentTab = 'funil';
@@ -2081,14 +2233,14 @@ function saveConfigAndLoad() {
 }
 
 // ── INIT ────────────────────────────────
-document.getElementById('gidEtapas').value     = GID_ETAPAS;
-document.getElementById('gidConversoes').value = GID_CONV;
-document.getElementById('gidAds').value        = GID_ADS;
 document.getElementById('sheetLink').value     = PUBLISHED_BASE;
 document.getElementById('campContains').value  = campaignContains;
 document.getElementById('perfSortMetric').value = perfSortMetric;
 document.getElementById('topSortMetric').value = topSortMetric;
-renderStageConfigs();
+if (!FUNNELS.some(f => f.id === activeFunnelId)) activeFunnelId = FUNNELS[0].id;
+applyActiveFunnelToGlobals();
+renderFunnelSelectors();
+fillConfigInputsFromGlobals();
 
 loadAll();
 setInterval(loadAll, 120000);
