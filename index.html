@@ -873,14 +873,31 @@ async function fetchSheetTabs() {
   if (!res.ok) throw new Error('Não foi possível ler abas da planilha publicada.');
   const html = await res.text();
   const tabs = [];
-  const re = /[?&]gid=(\d+)[^>]*>\s*([^<]+)\s*</gi;
+
+  // Formato comum com links HTML contendo gid e nome visível
+  const reAnchors = /[?&]gid=(\d+)[^>]*>\s*([^<]+)\s*</gi;
   let m;
-  while ((m = re.exec(html)) !== null) {
+  while ((m = reAnchors.exec(html)) !== null) {
     const gid = m[1];
     const title = (m[2] || '').trim();
     if (!title) continue;
     if (!tabs.some(t => t.gid === gid && t.title === title)) tabs.push({ gid, title });
   }
+
+  // Formato alternativo (Google pubhtml): items.push({name:"...", pageUrl:"...gid=123..."})
+  if (!tabs.length) {
+    const reItems = /items\.push\(\{name:\s*"([^"]+)",\s*pageUrl:\s*"([^"]+)"\}\)/g;
+    let item;
+    while ((item = reItems.exec(html)) !== null) {
+      const rawName = (item[1] || '').trim();
+      const rawPageUrl = (item[2] || '').replace(/\\\//g, '/');
+      const gidMatch = /gid=(\d+)/.exec(rawPageUrl);
+      if (!rawName || !gidMatch) continue;
+      const gid = gidMatch[1];
+      if (!tabs.some(t => t.gid === gid && t.title === rawName)) tabs.push({ gid, title: rawName });
+    }
+  }
+
   if (!tabs.length) throw new Error('Nenhuma aba encontrada para fazer o match de GID.');
   return tabs;
 }
