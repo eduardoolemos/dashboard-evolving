@@ -1226,30 +1226,51 @@ function getConvDateCol() {
   }) || '';
 }
 
-// ── LEADS: contagem direta da aba conversões filtrada apenas por período
-// Não depende de UTM — simplesmente conta linhas no período selecionado
-function countLeadsInPeriod() {
-  if (!RAW.conv.length) return 0;
-  const dateCol = getConvDateCol();
-  return RAW.conv.filter(r => {
-    const camp = (r.utm_campaign || '').trim();
-    // Ignora valores inválidos: vazio, '-', placeholders de pixel mal configurado
-    if (!camp || camp === '-' || camp.startsWith('{{')) return false;
+function getTrafficLeadRows() {
+  return RAW.etapas.length ? RAW.etapas : RAW.conv;
+}
+
+function getTrafficLeadDateCol(rows) {
+  return findCol(rows[0], /^(data_hora|date|timestamp|data|criado|created)/i);
+}
+
+function isPaidLeadRow(r) {
+  const camp = (r.utm_campaign || '').trim();
+  return !!camp && camp !== '-' && !camp.startsWith('{{');
+}
+
+function isMqlRow(r) {
+  const keys = ['qualificacao', 'qualificação', 'qualificado', 'status', 'mql', 'termo'];
+  let txt = '';
+  for (const k of keys) txt += ' ' + (r[k] || r[k.toUpperCase()] || '');
+  const n = normKey(txt);
+  return n.includes('qualificado') && !n.includes('desqualificado');
+}
+
+function getTrafficLeadStats() {
+  const rows = getTrafficLeadRows();
+  if (!rows.length) return { leads: 0, mql: 0 };
+  const dateCol = getTrafficLeadDateCol(rows);
+  let leads = 0, mql = 0;
+  rows.forEach(r => {
+    if (!isPaidLeadRow(r)) return;
     if (dateCol) {
       const d = parseDate(r[dateCol]);
-      if (!inPeriod(d)) return false;
+      if (!inPeriod(d)) return;
     }
-    return true;
-  }).length;
+    leads++;
+    if (isMqlRow(r)) mql++;
+  });
+  return { leads, mql };
 }
 
 // ── Leads por dia (para gráfico) — apenas leads pagos válidos ──
 function leadsByDay() {
-  const dateCol = getConvDateCol();
+  const rows = getTrafficLeadRows();
+  const dateCol = getTrafficLeadDateCol(rows);
   const byDay = {};
-  RAW.conv.forEach(r => {
-    const camp = (r.utm_campaign || '').trim();
-    if (!camp || camp === '-' || camp.startsWith('{{')) return;
+  rows.forEach(r => {
+    if (!isPaidLeadRow(r)) return;
     if (dateCol) {
       const d = parseDate(r[dateCol]);
       if (!inPeriod(d)) return;
@@ -1304,9 +1325,10 @@ function setLevel(level) {
 
 // ── FILTROS EM CASCATA ─────────────────
 function leadKeysInPeriod() {
-  const dateCol = getConvDateCol();
+  const rows = getTrafficLeadRows();
+  const dateCol = getTrafficLeadDateCol(rows);
   const camps = new Set(), adsets = new Set(), ads = new Set();
-  RAW.conv.forEach(r => {
+  rows.forEach(r => {
     if (dateCol) {
       const d = parseDate(r[dateCol]);
       if (!inPeriod(d)) return;
@@ -1394,7 +1416,8 @@ function onToggleLeads() {
 }
 
 function renderTopLeadBlocks(adsRows) {
-  const dateCol = getConvDateCol();
+  const leadRows = getTrafficLeadRows();
+  const dateCol = getTrafficLeadDateCol(leadRows);
 
   function mount(level, bodyId) {
     const getName = level === 'ad' ? getAdName : getAdsetName;
@@ -1411,7 +1434,7 @@ function renderTopLeadBlocks(adsRows) {
       map[key].clicks += getClicks(r);
     });
 
-    RAW.conv.forEach(r => {
+    leadRows.forEach(r => {
       const utmVal = (r[convKey] || '').trim();
       if (!utmVal || utmVal === '-' || utmVal.startsWith('{{')) return;
       if (dateCol) {
@@ -1564,12 +1587,11 @@ function renderTrafego() {
   const cpm = imp    > 0 ? spend  / imp * 1000 : 0;
   const cpc = clicks > 0 ? spend  / clicks     : 0;
 
-  // ── LEADS: contagem direta da aba CONVERSOES no período ──────────────
-  // Independe de UTM — conta todas as linhas da aba no período selecionado
-  const leads = countLeadsInPeriod();
+  const { leads, mql } = getTrafficLeadStats();
 
   // CPL = verba gasta no período ÷ leads convertidos no período
   const cpl      = leads > 0 && spend > 0 ? spend / leads : 0;
+  const cpmql    = mql > 0 && spend > 0 ? spend / mql : 0;
   const convRate = clicks > 0 && leads > 0 ? leads / clicks * 100 : 0;
 
   const filterDesc = [
@@ -1608,6 +1630,16 @@ function renderTrafego() {
       <div class="kpi-label">Custo por Lead (CPL)</div>
       <div class="kpi-value gold small">${leads > 0 && spend > 0 ? brl(cpl) : '—'}</div>
       <div class="kpi-sub">verba ÷ leads no período</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">Leads Qualificados (MQL)</div>
+      <div class="kpi-value teal">${fmt(mql)}</div>
+      <div class="kpi-sub">qualificação = qualificado</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">CPMQL</div>
+      <div class="kpi-value gold small">${mql > 0 && spend > 0 ? brl(cpmql) : '—'}</div>
+      <div class="kpi-sub">verba ÷ MQL no período</div>
     </div>
     <div class="kpi-card purple">
       <div class="kpi-label">Conv. Cliques → Lead</div>
@@ -1698,7 +1730,8 @@ function renderTrafego() {
 //   utm_content  (conv) ↔ Adset Name   (gerenciador)
 //   utm_term     (conv) ↔ Ad Name       (gerenciador)
 function renderPerfTable(adsRows) {
-  const dateCol = getConvDateCol();
+  const leadRows = getTrafficLeadRows();
+  const dateCol = getTrafficLeadDateCol(leadRows);
 
   const convUtmKey = currentLevel === 'campaign' ? 'utm_campaign'
                    : currentLevel === 'adset'    ? 'utm_content'
@@ -1723,7 +1756,7 @@ function renderPerfTable(adsRows) {
   });
 
   // ── PASSO 2: Conta leads das conversões, linkando pelo UTM (case-insensitive)
-  RAW.conv.forEach(r => {
+  leadRows.forEach(r => {
     // Valida UTM
     const utmVal = (r[convUtmKey] || '').trim();
     if (!utmVal || utmVal === '-' || utmVal.startsWith('{{')) return;
