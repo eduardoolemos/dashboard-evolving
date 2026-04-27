@@ -431,7 +431,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Nome</th><th>Email</th><th>Telefone</th><th>Diagnóstico</th><th>Perfil</th><th>Assinaturas</th><th>Campanha</th><th>Data</th>
+            <th>Nome</th><th>Email</th><th>Telefone</th><th>Lead Score</th><th>Diagnóstico</th><th>Perfil</th><th>Assinaturas</th><th>Campanha</th><th>Data</th>
           </tr></thead>
           <tbody id="bodyConversoes"></tbody>
         </table>
@@ -1711,12 +1711,68 @@ function renderConversoes(rows) {
     return;
   }
 
-  const total = rows.length;
-  const diagVals = rows.map(r => parseFloat((r.diagnostico_rs||'').replace('R$ ',''))||0).filter(v=>v>0);
+  function normalizeEmail(v) {
+    return String(v || '').trim().toLowerCase();
+  }
+  function normalizePhone(v) {
+    return String(v || '').replace(/\D+/g, '');
+  }
+  function parseMoney(v) {
+    return parseFloat(String(v || '').replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
+  }
+  function scoreFromRow(r) {
+    const assin = normalizeName(r.q1_assinaturas || '');
+    const ctrl = normalizeName(r.q2_controle || '');
+    const perfil = normalizeName(r.perfil_lead || '');
+    const diag = parseMoney(r.diagnostico_rs);
+    let score = 0;
+
+    if (assin.includes('10') || assin.includes('mais')) score += 35;
+    else if (assin.includes('6') || assin.includes('7') || assin.includes('8') || assin.includes('9')) score += 28;
+    else if (assin.includes('3') || assin.includes('4') || assin.includes('5')) score += 20;
+    else if (assin.includes('1') || assin.includes('2')) score += 12;
+    else if (assin) score += 6;
+
+    if (ctrl.includes('sabe exatamente')) score += 30;
+    else if (ctrl.includes('tem uma nocao') || ctrl.includes('tem uma nocao')) score += 20;
+    else if (ctrl.includes('nao acompanha')) score += 10;
+    else if (ctrl.includes('prefere nao saber')) score += 5;
+    else if (ctrl) score += 6;
+
+    score += Math.min(35, Math.round(diag / 1000));
+
+    if (perfil.includes('critico')) score += 15;
+    else if (perfil.includes('alto gasto')) score += 10;
+    else if (perfil.includes('atencao')) score += 6;
+    else if (perfil.includes('controlado')) score += 3;
+
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  const typebotRows = getTrafficLeadRows();
+  const byEmail = new Map();
+  const byPhone = new Map();
+  typebotRows.forEach(r => {
+    const em = normalizeEmail(r.email);
+    const ph = normalizePhone(r.telefone);
+    if (em) byEmail.set(em, r);
+    if (ph) byPhone.set(ph, r);
+  });
+
+  const scoredRows = rows.map(r => {
+    const em = normalizeEmail(r.email);
+    const ph = normalizePhone(r.telefone);
+    const src = byEmail.get(em) || byPhone.get(ph) || r;
+    return { ...r, lead_score: scoreFromRow(src) };
+  });
+
+  const total = scoredRows.length;
+  const diagVals = scoredRows.map(r => parseFloat((r.diagnostico_rs||'').replace('R$ ',''))||0).filter(v=>v>0);
   const diagMedio = diagVals.length ? Math.round(diagVals.reduce((a,b)=>a+b,0)/diagVals.length) : 0;
   const diagMax = Math.max(...diagVals, 0);
+  const scoreMedio = Math.round(scoredRows.reduce((a,b) => a + (b.lead_score || 0), 0) / Math.max(1, scoredRows.length));
   const perfis = { 'Crítico':0, 'Alto gasto':0, 'Atenção':0, 'Controlado':0 };
-  rows.forEach(r => { const p=(r.perfil_lead||'').replace(/[🟢🟡🟠🔴]\s*/,''); if(perfis[p]!==undefined) perfis[p]++; });
+  scoredRows.forEach(r => { const p=(r.perfil_lead||'').replace(/[🟢🟡🟠🔴]\s*/,''); if(perfis[p]!==undefined) perfis[p]++; });
   const criticos = (perfis['Crítico']||0) + (perfis['Alto gasto']||0);
 
   document.getElementById('kpiConversoes').innerHTML = `
@@ -1736,13 +1792,13 @@ function renderConversoes(rows) {
       <div class="kpi-sub">alto gasto ou crítico</div>
     </div>
     <div class="kpi-card purple">
-      <div class="kpi-label">Maior Diagnóstico</div>
-      <div class="kpi-value purple">R$ ${diagMax}</div>
-      <div class="kpi-sub">maior gasto identificado</div>
+      <div class="kpi-label">Lead Score Médio</div>
+      <div class="kpi-value purple">${scoreMedio}</div>
+      <div class="kpi-sub">pontuação média dos leads</div>
     </div>`;
 
   const perfisLabels = ['🔴 Crítico','🟠 Alto gasto','🟡 Atenção','🟢 Controlado'];
-  const perfisData   = rows.reduce((acc, r) => {
+  const perfisData   = scoredRows.reduce((acc, r) => {
     const raw = r.perfil_lead || '';
     perfisLabels.forEach((l,i) => { if (raw.includes(l.replace(/[🟢🟡🟠🔴]\s*/,'').trim())) acc[i]++; });
     return acc;
@@ -1765,7 +1821,7 @@ function renderConversoes(rows) {
   });
 
   const assMap = {};
-  rows.forEach(r => { const a=r.q1_assinaturas||'?'; assMap[a]=(assMap[a]||0)+1; });
+  scoredRows.forEach(r => { const a=r.q1_assinaturas||'?'; assMap[a]=(assMap[a]||0)+1; });
   if (chartAssign) chartAssign.destroy();
   chartAssign = new Chart(document.getElementById('chartAssinaturas'), {
     type: 'doughnut',
@@ -1782,7 +1838,7 @@ function renderConversoes(rows) {
   });
 
   const ctrlMap = {};
-  rows.forEach(r => { const c=r.q2_controle||'?'; ctrlMap[c]=(ctrlMap[c]||0)+1; });
+  scoredRows.forEach(r => { const c=r.q2_controle||'?'; ctrlMap[c]=(ctrlMap[c]||0)+1; });
   const maxCtrl = Math.max(...Object.values(ctrlMap),1);
   const ctrlColors = { '✅ Sabe exatamente':'var(--teal)', '🤔 Tem uma noção':'var(--gold)', '😅 Não acompanha':'var(--red)', '😬 Prefere não saber':'var(--purple)' };
   document.getElementById('controleGastos').innerHTML = Object.entries(ctrlMap).sort((a,b)=>b[1]-a[1]).map(([c,n]) => {
@@ -1795,7 +1851,7 @@ function renderConversoes(rows) {
   }).join('');
 
   const campConv = {};
-  rows.forEach(r => { const c=r.utm_campaign||'(direto)'; campConv[c]=(campConv[c]||0)+1; });
+  scoredRows.forEach(r => { const c=r.utm_campaign||'(direto)'; campConv[c]=(campConv[c]||0)+1; });
   const sortedConv = Object.entries(campConv).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxCC = sortedConv[0]?.[1]||1;
   document.getElementById('campanhasConv').innerHTML = sortedConv.map(([c,n]) => `
@@ -1805,7 +1861,7 @@ function renderConversoes(rows) {
       <div class="prog-val">${n}</div>
     </div>`).join('');
 
-  const ultimasConv = [...rows].sort((a,b)=>(b.data_hora||'').localeCompare(a.data_hora||'')).slice(0,10);
+  const ultimasConv = [...scoredRows].sort((a,b)=>(b.data_hora||'').localeCompare(a.data_hora||'')).slice(0,10);
   const perfilColor = p => {
     if (!p) return 'var(--text2)';
     if (p.includes('Crítico'))    return 'var(--red)';
@@ -1818,12 +1874,13 @@ function renderConversoes(rows) {
     <td>${r.nome||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.email||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;">${r.telefone||'—'}</td>
+    <td style="color:var(--purple);font-family:var(--font-mono);font-weight:600;">${r.lead_score ?? '—'}</td>
     <td style="color:var(--teal);font-family:var(--font-head);font-weight:700;">${r.diagnostico_rs||'—'}</td>
     <td><span style="color:${perfilColor(r.perfil_lead)};font-size:12px;">${r.perfil_lead||'—'}</span></td>
     <td style="font-size:12px;color:var(--text2);">${r.q1_assinaturas||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.utm_campaign||'(direto)'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${(r.data_hora||'').slice(0,16)||'—'}</td>
-  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
 }
 
 // ════════════════════════════════════════════════════════════════════════
