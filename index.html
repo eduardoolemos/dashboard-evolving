@@ -169,6 +169,14 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 .config-field input { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; padding:11px 14px; color:var(--white); font-family:var(--font-mono); font-size:12px; outline:none; transition:border-color 0.2s; }
 .config-field input:focus { border-color:var(--teal); }
 .config-hint { font-size:11px; color:var(--text3); margin-top:6px; }
+.stage-config-wrap { margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
+.stage-config-title { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text2); margin-bottom:10px; }
+.stage-config-list { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+.stage-row { display:grid; grid-template-columns:1.3fr 1fr auto; gap:8px; align-items:center; }
+.stage-row input { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; padding:9px 10px; color:var(--white); font-family:var(--font-mono); font-size:11px; outline:none; transition:border-color 0.2s; }
+.stage-row input:focus { border-color:var(--teal); }
+.btn-stage-add { background:transparent; border:1px dashed var(--border2); color:var(--teal); border-radius:8px; padding:8px 10px; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; }
+.btn-stage-remove { background:transparent; border:1px solid var(--border2); color:var(--red); border-radius:8px; padding:8px 10px; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; }
 .btn-load { width:100%; background:var(--teal); color:#030e0c; border:none; border-radius:8px; padding:13px; font-family:var(--font-head); font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; cursor:pointer; transition:all 0.2s; margin-top:8px; }
 .btn-load:hover { background:var(--teal2); transform:translateY(-1px); }
 .config-steps { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
@@ -256,6 +264,12 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <label>GID da aba "EXTRAÇÃO GERENCIADOR" (Meta Ads)</label>
         <input type="text" id="gidAds" placeholder="907185909">
         <div class="config-hint">Dados do gerenciador de anúncios</div>
+      </div>
+      <div class="stage-config-wrap">
+        <div class="stage-config-title">Etapas do processo (nome + GID da aba)</div>
+        <div class="config-hint" style="margin-bottom:10px;">Adicione, edite e remova etapas conforme o funil do cliente.</div>
+        <div class="stage-config-list" id="stageConfigList"></div>
+        <button class="btn-stage-add" onclick="addStageConfig()">+ Adicionar etapa</button>
       </div>
       <button class="btn-load" onclick="saveConfigAndLoad()">Carregar Dashboard →</button>
     </div>
@@ -522,12 +536,29 @@ const TRAFFIC_KEY = 'chippu_dash_traffic_v1';
 let GID_ETAPAS = '1961049271';
 let GID_CONV   = '';
 let GID_ADS    = '907185909';
+const DEFAULT_STAGE_CONFIGS = [
+  { name: 'Entrada (Typebot)', gid: '' },
+  { name: 'Qualificado', gid: '' },
+  { name: 'Desqualificado', gid: '' },
+  { name: 'Contato de Confirmacao', gid: '' },
+  { name: 'Call Confirmada', gid: '' },
+  { name: 'Pos-Call', gid: '' },
+  { name: 'No-Show', gid: '' },
+  { name: 'Call Feita', gid: '' }
+];
+let STAGE_CONFIGS = DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }));
 
 try {
   const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
   if (saved.gidEtapas) GID_ETAPAS = saved.gidEtapas;
   if (saved.gidConv)   GID_CONV   = saved.gidConv;
   if (saved.gidAds)    GID_ADS    = saved.gidAds;
+  if (Array.isArray(saved.stageConfigs) && saved.stageConfigs.length) {
+    STAGE_CONFIGS = saved.stageConfigs.map(s => ({
+      name: String(s?.name || '').trim(),
+      gid: String(s?.gid || '').trim()
+    }));
+  }
 } catch {}
 
 const TELA_ORDER = [0,1,2,3,4,5,6,7,8,9];
@@ -564,6 +595,34 @@ function switchTab(tab) {
   document.getElementById('configScreen').style.display   = tab==='config'      ? 'block' : 'none';
   document.getElementById('loadingScreen').style.display  = 'none';
   if (tab === 'trafego') renderTrafego();
+}
+
+function renderStageConfigs() {
+  const host = document.getElementById('stageConfigList');
+  if (!host) return;
+  host.innerHTML = STAGE_CONFIGS.map((s, i) => `
+    <div class="stage-row">
+      <input type="text" value="${(s.name || '').replace(/"/g, '&quot;')}" placeholder="Nome da etapa" onchange="onStageConfigChange(${i}, 'name', this.value)">
+      <input type="text" value="${(s.gid || '').replace(/"/g, '&quot;')}" placeholder="GID da aba" onchange="onStageConfigChange(${i}, 'gid', this.value)">
+      <button class="btn-stage-remove" onclick="removeStageConfig(${i})">Excluir</button>
+    </div>
+  `).join('');
+}
+
+function onStageConfigChange(index, field, value) {
+  if (!STAGE_CONFIGS[index]) return;
+  STAGE_CONFIGS[index][field] = String(value || '').trim();
+}
+
+function addStageConfig() {
+  STAGE_CONFIGS.push({ name: '', gid: '' });
+  renderStageConfigs();
+}
+
+function removeStageConfig(index) {
+  STAGE_CONFIGS.splice(index, 1);
+  if (!STAGE_CONFIGS.length) STAGE_CONFIGS.push({ name: '', gid: '' });
+  renderStageConfigs();
 }
 
 // ── CSV FETCH ──────────────────────────
@@ -1582,9 +1641,13 @@ function saveConfigAndLoad() {
   GID_ETAPAS = document.getElementById('gidEtapas').value.trim();
   GID_CONV   = document.getElementById('gidConversoes').value.trim();
   GID_ADS    = document.getElementById('gidAds').value.trim();
+  STAGE_CONFIGS = STAGE_CONFIGS
+    .map(s => ({ name: String(s.name || '').trim(), gid: String(s.gid || '').trim() }))
+    .filter(s => s.name || s.gid);
+  if (!STAGE_CONFIGS.length) STAGE_CONFIGS = [{ name: '', gid: '' }];
   try {
     localStorage.setItem(CFG_KEY, JSON.stringify({
-      gidEtapas: GID_ETAPAS, gidConv: GID_CONV, gidAds: GID_ADS
+      gidEtapas: GID_ETAPAS, gidConv: GID_CONV, gidAds: GID_ADS, stageConfigs: STAGE_CONFIGS
     }));
   } catch {}
   currentTab = 'funil';
@@ -1596,6 +1659,7 @@ document.getElementById('gidEtapas').value     = GID_ETAPAS;
 document.getElementById('gidConversoes').value = GID_CONV;
 document.getElementById('gidAds').value        = GID_ADS;
 document.getElementById('campContains').value  = campaignContains;
+renderStageConfigs();
 
 loadAll();
 setInterval(loadAll, 120000);
