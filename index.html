@@ -1859,13 +1859,20 @@ function renderConversoes(rows) {
   function isLojistaAnswer(v) {
     const txt = normalizeName(v);
     if (!txt) return false;
-    if (txt.includes('nao') && txt.includes('lojista')) return false;
-    return txt.includes('lojista');
+    if (txt.includes('nao')) return false;
+    return /\bsim\b/.test(txt);
+  }
+  function isExcludedRevenueAnswer(v) {
+    const txt = normalizeName(v).replace(/\s+/g, '');
+    if (!txt) return true;
+    return txt.includes('menosder$24000,00')
+      || txt.includes('menosder$24.000,00')
+      || (txt.includes('menosde') && txt.includes('24000'));
   }
   function isQualifiedLead(row) {
     const lojista = row.lojista_resp || getFieldByAliases(row, ['Lojista', 'Você é lojista', 'Voce e lojista', 'Tipo de Negócio', 'Tipo de Negocio']);
     const faturamento = row.faturamento_lojista || getFieldByAliases(row, ['Faturamento lojista', 'Faturamento']);
-    return isLojistaAnswer(lojista) && parseRevenueMin(faturamento) >= 20000;
+    return isLojistaAnswer(lojista) && !isExcludedRevenueAnswer(faturamento);
   }
 
   const typebotRows = getTrafficLeadRows();
