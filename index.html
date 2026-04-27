@@ -1534,8 +1534,30 @@ function getTrafficLeadDateCol(rows) {
   }) || '';
 }
 
+function getLeadFieldValue(row, aliases) {
+  const keys = Object.keys(row || {});
+  const wanted = aliases.map(a => normalizeName(a).replace(/[\s_-]+/g, ''));
+  for (const k of keys) {
+    const nk = normalizeName(k).replace(/[\s_-]+/g, '');
+    if (wanted.includes(nk)) return String(row[k] || '').trim();
+  }
+  return '';
+}
+
+function getLeadUtmCampaign(row) {
+  return getLeadFieldValue(row, ['utm_campaign', 'utm campaign', 'utmcampaign']);
+}
+
+function getLeadUtmContent(row) {
+  return getLeadFieldValue(row, ['utm_content', 'utm content', 'utmcontent']);
+}
+
+function getLeadUtmTerm(row) {
+  return getLeadFieldValue(row, ['utm_term', 'utm term', 'utmterm']);
+}
+
 function isPaidLeadRow(r) {
-  const camp = (r.utm_campaign || '').trim();
+  const camp = getLeadUtmCampaign(r);
   return !!camp && camp !== '-' && !camp.startsWith('{{');
 }
 
@@ -1599,9 +1621,9 @@ function countStageInPeriod(rows, filters) {
       const d = parseDate(r[dateCol]);
       if (!inPeriod(d)) return;
     }
-    const c = (r.utm_campaign || '').trim();
-    const a = (r.utm_content || '').trim();
-    const ad = (r.utm_term || '').trim();
+    const c = getLeadUtmCampaign(r);
+    const a = getLeadUtmContent(r);
+    const ad = getLeadUtmTerm(r);
     if (filters.campPattern && !normKey(c).includes(normKey(filters.campPattern))) return;
     if (filters.fCamp && c !== filters.fCamp) return;
     if (filters.fAdset && a !== filters.fAdset) return;
@@ -1711,9 +1733,9 @@ function leadKeysInPeriod() {
       const d = parseDate(r[dateCol]);
       if (!inPeriod(d)) return;
     }
-    const c  = (r.utm_campaign || '').trim();
-    const as = (r.utm_content  || '').trim();
-    const ad = (r.utm_term     || '').trim();
+    const c  = getLeadUtmCampaign(r);
+    const as = getLeadUtmContent(r);
+    const ad = getLeadUtmTerm(r);
     // Ignora valores inválidos
     if (c && c !== '-' && !c.startsWith('{{'))  camps.add(normKey(c));
     if (as && as !== '-' && !as.startsWith('{{')) adsets.add(normKey(as));
@@ -1799,7 +1821,6 @@ function renderTopLeadBlocks(adsRows) {
 
   function mount(level, bodyId) {
     const getName = level === 'ad' ? getAdName : getAdsetName;
-    const convKey = level === 'ad' ? 'utm_term' : 'utm_content';
 
     const map = {};
     adsRows.forEach(r => {
@@ -1813,7 +1834,7 @@ function renderTopLeadBlocks(adsRows) {
     });
 
     leadRows.forEach(r => {
-      const utmVal = (r[convKey] || '').trim();
+      const utmVal = level === 'ad' ? getLeadUtmTerm(r) : getLeadUtmContent(r);
       if (!utmVal || utmVal === '-' || utmVal.startsWith('{{')) return;
       if (dateCol) {
         const d = parseDate(r[dateCol]);
@@ -2146,9 +2167,9 @@ function renderPerfTable(adsRows) {
   const noShowRows = getStageRowsByAliases(['No-Show', 'No Show']);
   const callRows = getStageRowsByAliases(['Call Feita']);
 
-  const convUtmKey = currentLevel === 'campaign' ? 'utm_campaign'
-                   : currentLevel === 'adset'    ? 'utm_content'
-                                                 : 'utm_term';
+  const getConvUtmVal = currentLevel === 'campaign' ? getLeadUtmCampaign
+                     : currentLevel === 'adset'    ? getLeadUtmContent
+                                                    : getLeadUtmTerm;
 
   const adsNameFn  = currentLevel === 'campaign' ? getCampName
                    : currentLevel === 'adset'    ? getAdsetName
@@ -2176,7 +2197,7 @@ function renderPerfTable(adsRows) {
   function addCount(rows, field) {
     const rowDateCol = getTrafficLeadDateCol(rows);
     rows.forEach(r => {
-      const utmVal = (r[convUtmKey] || '').trim();
+      const utmVal = getConvUtmVal(r);
       if (!utmVal || utmVal === '-' || utmVal.startsWith('{{')) return;
       if (rowDateCol) {
         const d = parseDate(r[rowDateCol]);
