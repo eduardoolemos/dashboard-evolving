@@ -128,6 +128,9 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .metric-summary::-webkit-details-marker { display:none; }
 .metric-summary-label { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text2); }
 .metric-summary-right { font-family:var(--font-mono); font-size:10px; color:var(--teal); text-transform:uppercase; letter-spacing:0.08em; }
+.metric-chooser-content { max-height:0; opacity:0; overflow:hidden; transition:max-height .25s ease, opacity .2s ease; }
+.metric-chooser[open] .metric-chooser-content { max-height:380px; opacity:1; }
+.metric-selected-count { color:var(--teal); margin-left:6px; }
 .kpi-mode-wrap { display:flex; justify-content:flex-end; margin-bottom:10px; }
 
 .filter-bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px; padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
@@ -526,33 +529,35 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
       </div>
       <details class="metric-chooser">
         <summary class="metric-summary">
-          <span class="metric-summary-label">Selecionar métricas visíveis</span>
+          <span class="metric-summary-label">Selecionar métricas visíveis <span class="metric-selected-count" id="metricSelectedCount">(0)</span></span>
           <span class="metric-summary-right">Clique para abrir</span>
         </summary>
-        <div class="metric-chooser-head" style="margin-top:10px;">
-          <div class="metric-chooser-title">Marque o que deseja ver</div>
-          <div class="metric-chooser-actions">
-            <button type="button" class="metric-action-btn" onclick="selectAllVisibleMetrics(event)">Marcar tudo</button>
-            <button type="button" class="metric-action-btn" onclick="clearAllVisibleMetrics(event)">Limpar tudo</button>
+        <div class="metric-chooser-content">
+          <div class="metric-chooser-head" style="margin-top:10px;">
+            <div class="metric-chooser-title">Marque o que deseja ver</div>
+            <div class="metric-chooser-actions">
+              <button type="button" class="metric-action-btn" onclick="selectAllVisibleMetrics(event)">Marcar tudo</button>
+              <button type="button" class="metric-action-btn" onclick="clearAllVisibleMetrics(event)">Limpar tudo</button>
+            </div>
           </div>
-        </div>
-        <div class="metric-chooser-grid" id="metricChooserGrid">
-          <label class="metric-chip"><input type="checkbox" data-metric="spend" onchange="onVisibleMetricsChange()"> Verba</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="leads" onchange="onVisibleMetricsChange()"> Leads</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cpl" onchange="onVisibleMetricsChange()"> CPL</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cpm" onchange="onVisibleMetricsChange()"> CPM</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cpc" onchange="onVisibleMetricsChange()"> CPC</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="ctr" onchange="onVisibleMetricsChange()"> CTR</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="mql" onchange="onVisibleMetricsChange()"> MQLs</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cpmql" onchange="onVisibleMetricsChange()"> CPMQL</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="agendada" onchange="onVisibleMetricsChange()"> Contato de Confirmação</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="confirmada" onchange="onVisibleMetricsChange()"> Call Confirmada</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="noShow" onchange="onVisibleMetricsChange()"> No Show</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="callFeita" onchange="onVisibleMetricsChange()"> Call Feita</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cAgendada" onchange="onVisibleMetricsChange()"> Custo Contato</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cConfirmada" onchange="onVisibleMetricsChange()"> Custo Confirmada</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cNoShow" onchange="onVisibleMetricsChange()"> Custo No-Show</label>
-          <label class="metric-chip"><input type="checkbox" data-metric="cCallFeita" onchange="onVisibleMetricsChange()"> Custo Call Feita</label>
+          <div class="metric-chooser-grid" id="metricChooserGrid">
+            <label class="metric-chip"><input type="checkbox" data-metric="spend" onchange="onVisibleMetricsChange()"> Verba</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="leads" onchange="onVisibleMetricsChange()"> Leads</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpl" onchange="onVisibleMetricsChange()"> CPL</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpm" onchange="onVisibleMetricsChange()"> CPM</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpc" onchange="onVisibleMetricsChange()"> CPC</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="ctr" onchange="onVisibleMetricsChange()"> CTR</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="mql" onchange="onVisibleMetricsChange()"> MQLs</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cpmql" onchange="onVisibleMetricsChange()"> CPMQL</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="agendada" onchange="onVisibleMetricsChange()"> Contato de Confirmação</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="confirmada" onchange="onVisibleMetricsChange()"> Call Confirmada</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="noShow" onchange="onVisibleMetricsChange()"> No Show</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="callFeita" onchange="onVisibleMetricsChange()"> Call Feita</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cAgendada" onchange="onVisibleMetricsChange()"> Custo Contato</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cConfirmada" onchange="onVisibleMetricsChange()"> Custo Confirmada</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cNoShow" onchange="onVisibleMetricsChange()"> Custo No-Show</label>
+            <label class="metric-chip"><input type="checkbox" data-metric="cCallFeita" onchange="onVisibleMetricsChange()"> Custo Call Feita</label>
+          </div>
         </div>
       </details>
 
@@ -2081,6 +2086,13 @@ function syncMetricChooserFromState() {
     const metric = inp.getAttribute('data-metric') || '';
     inp.checked = isMetricVisible(metric);
   });
+  updateMetricSelectedCount();
+}
+
+function updateMetricSelectedCount() {
+  const count = visibleMetrics.size;
+  const countEl = document.getElementById('metricSelectedCount');
+  if (countEl) countEl.textContent = `(${count})`;
 }
 
 function onVisibleMetricsChange() {
