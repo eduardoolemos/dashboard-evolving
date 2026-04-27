@@ -536,9 +536,9 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 
 <script>
 // ── CONFIG ──────────────────────────────
-let SHEET_ID = '1Nu2gUEKeBqZVFvpoDenUbGDheT3kTU7QsM1DQO_pFYM';
-let PUBLISHED_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkyevntG5ve-0g2ySy6kXHyARA6WcWAXwN85MFHM5bSs2rYMXBPlhXcPEJJIDk0GkJ0gezEX2oovvN/pub?output=csv';
-let EXPORT_BASE    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+let SHEET_ID = '';
+let PUBLISHED_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQOja4lKbMPn_FLspiZtYU-rYU0NTpRu2yvoCUmJe8SzbMTiJC5dKlDmXvP0LnCbReQlrW5jMyUJVFY/pub?output=csv';
+let EXPORT_BASE    = SHEET_ID ? `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` : '';
 
 const CFG_KEY = 'chippu_dash_cfg_v3';
 const TRAFFIC_KEY = 'chippu_dash_traffic_v1';
@@ -572,7 +572,7 @@ try {
     }));
   }
 } catch {}
-EXPORT_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+EXPORT_BASE = SHEET_ID ? `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` : '';
 
 const TELA_ORDER = [0,1,2,3,4,5,6,7,8,9];
 const TELA_NAMES = {
@@ -733,7 +733,7 @@ async function autoFillGidsFromSheet() {
 
 // ── CSV FETCH ──────────────────────────
 async function fetchCSV(gid, useExport=false) {
-  const url = useExport
+  const url = (useExport && EXPORT_BASE)
     ? EXPORT_BASE + '&gid=' + gid
     : PUBLISHED_BASE + '&gid=' + gid;
   const res = await fetch(url);
