@@ -1905,21 +1905,52 @@ function onAdsetChange() {
 
 function filterByTopRow(level, name) {
   if (!name) return;
+  const campSel = document.getElementById('campSelect');
+  const adsetSel = document.getElementById('adsetSelect');
+  const adSel = document.getElementById('adSelect');
+
+  function setSelectValueIfExists(sel, value) {
+    if (!sel) return;
+    if (!value) { sel.value = ''; return; }
+    const has = Array.from(sel.options || []).some(o => o.value === value);
+    sel.value = has ? value : '';
+  }
+
   if (level === 'adset') {
-    const adsetSel = document.getElementById('adsetSelect');
     if (adsetSel) {
       const isSame = adsetSel.value === name;
-      adsetSel.value = isSame ? '' : name;
+      if (isSame) {
+        adsetSel.value = '';
+        onAdsetChange();
+        return;
+      }
     }
+    const row = RAW.ads.find(r => getAdsetName(r) === name && inPeriod(parseDate(getAdsDate(r))));
+    const campName = row ? getCampName(row) : '';
+    setSelectValueIfExists(campSel, campName);
+    rebuildAllFilters();
+    setSelectValueIfExists(adsetSel, name);
     onAdsetChange();
     return;
   }
+
   if (level === 'ad') {
-    const adSel = document.getElementById('adSelect');
     if (adSel) {
       const isSame = adSel.value === name;
-      adSel.value = isSame ? '' : name;
+      if (isSame) {
+        adSel.value = '';
+        renderTrafego();
+        return;
+      }
     }
+    const row = RAW.ads.find(r => getAdName(r) === name && inPeriod(parseDate(getAdsDate(r))));
+    const campName = row ? getCampName(row) : '';
+    const adsetName = row ? getAdsetName(row) : '';
+    setSelectValueIfExists(campSel, campName);
+    rebuildAllFilters();
+    setSelectValueIfExists(adsetSel, adsetName);
+    rebuildAllFilters();
+    setSelectValueIfExists(adSel, name);
     renderTrafego();
   }
 }
