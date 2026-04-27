@@ -796,6 +796,63 @@ let RAW = { etapas:[], conv:[], ads:[], stages:{} };
 let filterFrom = null, filterTo = null;
 let campaignContains = '';
 
+function encodeShareCfg(payload) {
+  try {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  } catch {
+    return '';
+  }
+}
+
+function decodeShareCfg(raw) {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(raw))));
+  } catch {
+    return null;
+  }
+}
+
+function readSharedCfgFromUrl() {
+  try {
+    const qp = new URLSearchParams(window.location.search);
+    const fromQuery = qp.get('cfg');
+    if (fromQuery) return decodeShareCfg(fromQuery);
+    if (window.location.hash && window.location.hash.startsWith('#cfg=')) {
+      return decodeShareCfg(window.location.hash.slice(5));
+    }
+  } catch {}
+  return null;
+}
+
+function writeSharedCfgToUrl(payload) {
+  try {
+    const encoded = encodeShareCfg(payload);
+    if (!encoded) return;
+    const u = new URL(window.location.href);
+    u.searchParams.set('cfg', encoded);
+    window.history.replaceState({}, '', u.toString());
+  } catch {}
+}
+
+function buildSharePayload() {
+  return {
+    cfg: {
+      sheetId: SHEET_ID,
+      publishedBase: PUBLISHED_BASE,
+      gidEtapas: GID_ETAPAS,
+      gidConv: GID_CONV,
+      gidAds: GID_ADS,
+      stageConfigs: STAGE_CONFIGS,
+      activeFunnelId,
+      funnels: FUNNELS
+    },
+    traffic: {
+      campaignContains,
+      visibleMetrics: Array.from(visibleMetrics || [])
+    }
+  };
+}
+
 try {
   const savedTraffic = JSON.parse(localStorage.getItem(TRAFFIC_KEY) || '{}');
   campaignContains = (savedTraffic.campaignContains || '').trim();
@@ -803,6 +860,52 @@ try {
     visibleMetrics = new Set(savedTraffic.visibleMetrics.map(v => String(v || '').trim()).filter(Boolean));
   }
 } catch {}
+
+try {
+  const shared = readSharedCfgFromUrl();
+  if (shared?.cfg) {
+    const c = shared.cfg;
+    if (c.sheetId) SHEET_ID = c.sheetId;
+    if (c.publishedBase) PUBLISHED_BASE = c.publishedBase;
+    if (c.gidEtapas !== undefined) GID_ETAPAS = String(c.gidEtapas || '');
+    if (c.gidConv !== undefined) GID_CONV = String(c.gidConv || '');
+    if (c.gidAds !== undefined) GID_ADS = String(c.gidAds || '');
+    if (Array.isArray(c.stageConfigs) && c.stageConfigs.length) {
+      STAGE_CONFIGS = c.stageConfigs.map(s => ({
+        name: String(s?.name || '').trim(),
+        gid: String(s?.gid || '').trim()
+      }));
+    }
+    if (Array.isArray(c.funnels) && c.funnels.length) {
+      FUNNELS = c.funnels.map((f, i) => ({
+        id: String(f.id || `funnel_${i+1}`),
+        name: String(f.name || `Página ${i+1}`),
+        gidEtapas: String(f.gidEtapas || ''),
+        gidConv: String(f.gidConv || ''),
+        gidAds: String(f.gidAds || ''),
+        defaultCampContains: String(f.defaultCampContains || ''),
+        stageConfigs: Array.isArray(f.stageConfigs) ? f.stageConfigs.map(s => ({
+          name: String(s?.name || '').trim(),
+          gid: String(s?.gid || '').trim()
+        })) : DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }))
+      }));
+    }
+    if (c.activeFunnelId) activeFunnelId = String(c.activeFunnelId);
+    localStorage.setItem(CFG_KEY, JSON.stringify(c));
+  }
+  if (shared?.traffic) {
+    const t = shared.traffic;
+    campaignContains = String(t.campaignContains || '').trim();
+    if (Array.isArray(t.visibleMetrics) && t.visibleMetrics.length) {
+      visibleMetrics = new Set(t.visibleMetrics.map(v => String(v || '').trim()).filter(Boolean));
+    }
+    localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
+      campaignContains,
+      visibleMetrics: Array.from(visibleMetrics)
+    }));
+  }
+} catch {}
+EXPORT_BASE = SHEET_ID ? `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv` : '';
 
 // ── TAB ────────────────────────────────
 function switchTab(tab) {
@@ -859,6 +962,7 @@ function persistConfigState() {
       activeFunnelId,
       funnels: FUNNELS
     }));
+    writeSharedCfgToUrl(buildSharePayload());
   } catch {}
 }
 
@@ -2181,6 +2285,7 @@ function onVisibleMetricsChange() {
       visibleMetrics: Array.from(visibleMetrics)
     }));
   } catch {}
+  writeSharedCfgToUrl(buildSharePayload());
   applyMetricColumnVisibility();
   renderTrafego();
 }
@@ -2199,6 +2304,7 @@ function selectAllVisibleMetrics(event) {
       visibleMetrics: Array.from(visibleMetrics)
     }));
   } catch {}
+  writeSharedCfgToUrl(buildSharePayload());
   applyMetricColumnVisibility();
   renderTrafego();
 }
@@ -2208,6 +2314,7 @@ function clearAllVisibleMetrics(event) {
   visibleMetrics = new Set();
   ensureVisibleMetricsNotEmpty();
   syncMetricChooserFromState();
+  writeSharedCfgToUrl(buildSharePayload());
   applyMetricColumnVisibility();
   renderTrafego();
 }
