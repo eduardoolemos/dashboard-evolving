@@ -1720,33 +1720,58 @@ function renderConversoes(rows) {
   function parseMoney(v) {
     return parseFloat(String(v || '').replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
   }
+  function getFieldByAliases(row, aliases) {
+    const keys = Object.keys(row || {});
+    const wanted = aliases.map(a => normalizeName(a).replace(/\s+/g, ''));
+    for (const k of keys) {
+      const nk = normalizeName(k).replace(/\s+/g, '');
+      if (wanted.includes(nk)) return String(row[k] || '').trim();
+    }
+    return '';
+  }
   function scoreFromRow(r) {
-    const assin = normalizeName(r.q1_assinaturas || '');
-    const ctrl = normalizeName(r.q2_controle || '');
-    const perfil = normalizeName(r.perfil_lead || '');
-    const diag = parseMoney(r.diagnostico_rs);
-    let score = 0;
+    const prioridade = normalizeName(getFieldByAliases(r, ['Prioridade']));
+    const situacaoFinanceira = normalizeName(getFieldByAliases(r, ['Situação Financeira', 'Situacao Financeira']));
+    const urgencia = normalizeName(getFieldByAliases(r, ['Urgência', 'Urgencia']));
+    const estoque = normalizeName(getFieldByAliases(r, ['Estoque']));
+    const faturamentoTxt = getFieldByAliases(r, ['Faturamento lojista', 'Faturamento']);
 
-    if (assin.includes('10') || assin.includes('mais')) score += 35;
-    else if (assin.includes('6') || assin.includes('7') || assin.includes('8') || assin.includes('9')) score += 28;
-    else if (assin.includes('3') || assin.includes('4') || assin.includes('5')) score += 20;
-    else if (assin.includes('1') || assin.includes('2')) score += 12;
-    else if (assin) score += 6;
+    const scorePrioridade = !prioridade ? 0
+      : (prioridade.includes('alta') || prioridade.includes('maxima')) ? 100
+      : prioridade.includes('media') ? 65
+      : prioridade.includes('baixa') ? 35
+      : 60;
 
-    if (ctrl.includes('sabe exatamente')) score += 30;
-    else if (ctrl.includes('tem uma nocao') || ctrl.includes('tem uma nocao')) score += 20;
-    else if (ctrl.includes('nao acompanha')) score += 10;
-    else if (ctrl.includes('prefere nao saber')) score += 5;
-    else if (ctrl) score += 6;
+    const scoreSituacao = !situacaoFinanceira ? 0
+      : (situacaoFinanceira.includes('boa') || situacaoFinanceira.includes('estavel') || situacaoFinanceira.includes('organizada')) ? 100
+      : situacaoFinanceira.includes('media') || situacaoFinanceira.includes('regular') ? 65
+      : situacaoFinanceira.includes('ruim') || situacaoFinanceira.includes('critica') ? 35
+      : 60;
 
-    score += Math.min(35, Math.round(diag / 1000));
+    const scoreUrgencia = !urgencia ? 0
+      : (urgencia.includes('alta') || urgencia.includes('urgente') || urgencia.includes('imediata')) ? 100
+      : urgencia.includes('media') ? 65
+      : urgencia.includes('baixa') ? 35
+      : 60;
 
-    if (perfil.includes('critico')) score += 15;
-    else if (perfil.includes('alto gasto')) score += 10;
-    else if (perfil.includes('atencao')) score += 6;
-    else if (perfil.includes('controlado')) score += 3;
+    const scoreEstoque = !estoque ? 0
+      : (estoque.includes('baixo') || estoque.includes('zerado') || estoque.includes('critico')) ? 100
+      : estoque.includes('medio') ? 65
+      : (estoque.includes('alto') || estoque.includes('ok')) ? 35
+      : 60;
 
-    return Math.max(0, Math.min(100, Math.round(score)));
+    const faturamento = parseMoney(faturamentoTxt);
+    const scoreFaturamento = !faturamentoTxt ? 0
+      : faturamento >= 100000 ? 100
+      : faturamento >= 50000 ? 85
+      : faturamento >= 20000 ? 70
+      : faturamento >= 10000 ? 55
+      : faturamento > 0 ? 35
+      : 20;
+
+    // Média percentual das 5 dimensões do Typebot (0-100)
+    const score = Math.round((scorePrioridade + scoreSituacao + scoreUrgencia + scoreEstoque + scoreFaturamento) / 5);
+    return Math.max(0, Math.min(100, score));
   }
 
   const typebotRows = getTrafficLeadRows();
@@ -1792,9 +1817,9 @@ function renderConversoes(rows) {
       <div class="kpi-sub">alto gasto ou crítico</div>
     </div>
     <div class="kpi-card purple">
-      <div class="kpi-label">Lead Score Médio</div>
-      <div class="kpi-value purple">${scoreMedio}</div>
-      <div class="kpi-sub">pontuação média dos leads</div>
+      <div class="kpi-label">Lead Score Médio (%)</div>
+      <div class="kpi-value purple">${scoreMedio}%</div>
+      <div class="kpi-sub">média das respostas do Typebot</div>
     </div>`;
 
   const perfisLabels = ['🔴 Crítico','🟠 Alto gasto','🟡 Atenção','🟢 Controlado'];
@@ -1874,7 +1899,7 @@ function renderConversoes(rows) {
     <td>${r.nome||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.email||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;">${r.telefone||'—'}</td>
-    <td style="color:var(--purple);font-family:var(--font-mono);font-weight:600;">${r.lead_score ?? '—'}</td>
+    <td style="color:var(--purple);font-family:var(--font-mono);font-weight:600;">${(r.lead_score ?? 0)}%</td>
     <td style="color:var(--teal);font-family:var(--font-head);font-weight:700;">${r.diagnostico_rs||'—'}</td>
     <td><span style="color:${perfilColor(r.perfil_lead)};font-size:12px;">${r.perfil_lead||'—'}</span></td>
     <td style="font-size:12px;color:var(--text2);">${r.q1_assinaturas||'—'}</td>
