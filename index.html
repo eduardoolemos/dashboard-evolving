@@ -69,6 +69,15 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .kpi-card.red::after   { background:linear-gradient(90deg,var(--red),transparent); }
 .kpi-card.purple::after{ background:linear-gradient(90deg,var(--purple),transparent); }
 .kpi-label { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text2); margin-bottom:10px; }
+.metric-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; vertical-align:middle; }
+.dot-red { background:var(--red); }
+.dot-teal { background:var(--teal); }
+.dot-gold { background:var(--gold); }
+.dot-purple { background:var(--purple); }
+.dot-blue { background:#4aa3ff; }
+.dot-orange { background:#ff8a4a; }
+.dot-green { background:#38d39f; }
+.dot-pink { background:#ff5fa2; }
 .kpi-value { font-family:var(--font-head); font-size:38px; font-weight:800; color:var(--white); line-height:1; margin-bottom:6px; }
 .kpi-value.teal  { color:var(--teal); }
 .kpi-value.gold  { color:var(--gold); }
@@ -1793,7 +1802,7 @@ function renderTrafego() {
   const txMqlToContato = mql > 0 && agendadas > 0 ? (agendadas / mql * 100) : 0;
   const txContatoToConfirmada = agendadas > 0 && confirmadas > 0 ? (confirmadas / agendadas * 100) : 0;
   const txConfirmadaToCallFeita = confirmadas > 0 && callFeita > 0 ? (callFeita / confirmadas * 100) : 0;
-  const connectRate = mql > 0 && agendadas > 0 ? (agendadas / mql * 100) : 0;
+  const connectRate = clicks > 0 && lpv > 0 ? (lpv / clicks * 100) : 0;
   const noShow = countStageInPeriod(
     getStageRowsByAliases(['No-Show', 'No Show']),
     { fCamp, fAdset, fAd, campPattern }
@@ -1805,40 +1814,40 @@ function renderTrafego() {
   const custoLpv = lpv > 0 && spend > 0 ? spend / lpv : 0;
 
   const primaryHtml = `
-    <div class="kpi-card red"><div class="kpi-label">Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">no período</div></div>
-    <div class="kpi-card teal"><div class="kpi-label">Leads Captados</div><div class="kpi-value teal">${fmt(leads)}</div><div class="kpi-sub">conversões no período</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">Custo por Lead (CPL)</div><div class="kpi-value gold small">${leads > 0 ? brl(cpl) : '—'}</div><div class="kpi-sub">verba ÷ leads</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Taxa Qualificação</div><div class="kpi-value purple">${txQualificacao > 0 ? pct(txQualificacao) : '—'}</div><div class="kpi-sub">MQL ÷ Leads</div></div>
+    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">no período</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Leads Captados</div><div class="kpi-value teal">${fmt(leads)}</div><div class="kpi-sub">conversões no período</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo por Lead (CPL)</div><div class="kpi-value gold small">${leads > 0 ? brl(cpl) : '—'}</div><div class="kpi-sub">verba ÷ leads</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Taxa Qualificação</div><div class="kpi-value purple">${txQualificacao > 0 ? pct(txQualificacao) : '—'}</div><div class="kpi-sub">MQL ÷ Leads</div></div>
 
-    <div class="kpi-card teal"><div class="kpi-label">MQL</div><div class="kpi-value teal">${fmt(mql)}</div><div class="kpi-sub">qualificação = qualificado</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">CPMQL</div><div class="kpi-value gold small">${mql > 0 ? brl(cpmql) : '—'}</div><div class="kpi-sub">verba ÷ MQL</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Tx MQL → Contato</div><div class="kpi-value purple">${txMqlToContato > 0 ? pct(txMqlToContato) : '—'}</div><div class="kpi-sub">contato ÷ MQL</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Reunião Agendada</div><div class="kpi-value purple">${fmt(agendadas)}</div><div class="kpi-sub">contato de confirmação</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-blue"></span>MQL</div><div class="kpi-value teal">${fmt(mql)}</div><div class="kpi-sub">qualificação = qualificado</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>CPMQL</div><div class="kpi-value gold small">${mql > 0 ? brl(cpmql) : '—'}</div><div class="kpi-sub">verba ÷ MQL</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx MQL → Contato</div><div class="kpi-value purple">${txMqlToContato > 0 ? pct(txMqlToContato) : '—'}</div><div class="kpi-sub">contato ÷ MQL</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Reunião Agendada</div><div class="kpi-value purple">${fmt(agendadas)}</div><div class="kpi-sub">contato de confirmação</div></div>
 
-    <div class="kpi-card gold"><div class="kpi-label">Custo por Agendada</div><div class="kpi-value gold small">${agendadas > 0 ? brl(custoContato) : '—'}</div><div class="kpi-sub">verba ÷ agendadas</div></div>
-    <div class="kpi-card teal"><div class="kpi-label">Reunião Confirmada</div><div class="kpi-value teal">${fmt(confirmadas)}</div><div class="kpi-sub">call confirmada</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">Custo Confirmada</div><div class="kpi-value gold small">${confirmadas > 0 ? brl(custoConfirmada) : '—'}</div><div class="kpi-sub">verba ÷ confirmadas</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Tx Contato → Confirmada</div><div class="kpi-value purple">${txContatoToConfirmada > 0 ? pct(txContatoToConfirmada) : '—'}</div><div class="kpi-sub">confirmada ÷ contato</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo por Agendada</div><div class="kpi-value gold small">${agendadas > 0 ? brl(custoContato) : '—'}</div><div class="kpi-sub">verba ÷ agendadas</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Reunião Confirmada</div><div class="kpi-value teal">${fmt(confirmadas)}</div><div class="kpi-sub">call confirmada</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Confirmada</div><div class="kpi-value gold small">${confirmadas > 0 ? brl(custoConfirmada) : '—'}</div><div class="kpi-sub">verba ÷ confirmadas</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Contato → Confirmada</div><div class="kpi-value purple">${txContatoToConfirmada > 0 ? pct(txContatoToConfirmada) : '—'}</div><div class="kpi-sub">confirmada ÷ contato</div></div>
 
-    <div class="kpi-card red"><div class="kpi-label">No-Show</div><div class="kpi-value red">${fmt(noShow)}</div><div class="kpi-sub">etapa no-show</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">Custo No-Show</div><div class="kpi-value gold small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
-    <div class="kpi-card teal"><div class="kpi-label">Call Feita</div><div class="kpi-value teal">${fmt(callFeita)}</div><div class="kpi-sub">etapa call feita</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">Custo Call Feita</div><div class="kpi-value gold small">${callFeita > 0 ? brl(custoCallFeita) : '—'}</div><div class="kpi-sub">verba ÷ call feita</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Tx Confirmada → Call Feita</div><div class="kpi-value purple">${txConfirmadaToCallFeita > 0 ? pct(txConfirmadaToCallFeita) : '—'}</div><div class="kpi-sub">call feita ÷ confirmada</div></div>
+    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>No-Show</div><div class="kpi-value red">${fmt(noShow)}</div><div class="kpi-sub">etapa no-show</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo No-Show</div><div class="kpi-value gold small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-green"></span>Call Feita</div><div class="kpi-value teal">${fmt(callFeita)}</div><div class="kpi-sub">etapa call feita</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Call Feita</div><div class="kpi-value gold small">${callFeita > 0 ? brl(custoCallFeita) : '—'}</div><div class="kpi-sub">verba ÷ call feita</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Confirmada → Call Feita</div><div class="kpi-value purple">${txConfirmadaToCallFeita > 0 ? pct(txConfirmadaToCallFeita) : '—'}</div><div class="kpi-sub">call feita ÷ confirmada</div></div>
   `;
 
   const secondaryHtml = `
-    <div class="kpi-card teal"><div class="kpi-label">Impressões</div><div class="kpi-value teal">${fmt(imp)}</div><div class="kpi-sub">alcance pago no período</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">CPM</div><div class="kpi-value gold small">${imp > 0 ? brl(cpm) : '—'}</div><div class="kpi-sub">verba ÷ 1.000 impressões</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Cliques</div><div class="kpi-value purple">${fmt(clicks)}</div><div class="kpi-sub">cliques em link</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">CPC</div><div class="kpi-value gold small">${clicks > 0 ? brl(cpc) : '—'}</div><div class="kpi-sub">verba ÷ cliques</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">CTR</div><div class="kpi-value purple">${imp > 0 ? pct(ctr) : '—'}</div><div class="kpi-sub">cliques ÷ impressões</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">Custo por LPV</div><div class="kpi-value gold small">${lpv > 0 ? brl(custoLpv) : '—'}</div><div class="kpi-sub">verba ÷ landing views</div></div>
-    <div class="kpi-card teal"><div class="kpi-label">Connect Rate</div><div class="kpi-value teal">${connectRate > 0 ? pct(connectRate) : '—'}</div><div class="kpi-sub">contato agendada ÷ MQL</div></div>
-    <div class="kpi-card gold"><div class="kpi-label">Custo por Conexão</div><div class="kpi-value gold small">${agendadas > 0 ? brl(custoContato) : '—'}</div><div class="kpi-sub">verba ÷ contato agendada</div></div>
-    <div class="kpi-card red"><div class="kpi-label">Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">base de custos</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Landing Views</div><div class="kpi-value purple">${fmt(lpv)}</div><div class="kpi-sub">visualizações da página</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Conv. Cliques → Lead</div><div class="kpi-value purple">${convRate > 0 ? pct(convRate) : '—'}</div><div class="kpi-sub">${fmt(leads)} de ${fmt(clicks)} cliques</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Impressões</div><div class="kpi-value teal">${fmt(imp)}</div><div class="kpi-sub">alcance pago no período</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>CPM</div><div class="kpi-value gold small">${imp > 0 ? brl(cpm) : '—'}</div><div class="kpi-sub">verba ÷ 1.000 impressões</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Cliques</div><div class="kpi-value purple">${fmt(clicks)}</div><div class="kpi-sub">cliques em link</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>CPC</div><div class="kpi-value gold small">${clicks > 0 ? brl(cpc) : '—'}</div><div class="kpi-sub">verba ÷ cliques</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-blue"></span>CTR</div><div class="kpi-value purple">${imp > 0 ? pct(ctr) : '—'}</div><div class="kpi-sub">cliques ÷ impressões</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo por LPV</div><div class="kpi-value gold small">${lpv > 0 ? brl(custoLpv) : '—'}</div><div class="kpi-sub">verba ÷ landing views</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-green"></span>Connect Rate</div><div class="kpi-value teal">${connectRate > 0 ? pct(connectRate) : '—'}</div><div class="kpi-sub">landing views ÷ cliques</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo por Conexão</div><div class="kpi-value gold small">${lpv > 0 ? brl(custoLpv) : '—'}</div><div class="kpi-sub">verba ÷ landing views</div></div>
+    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">base de custos</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Landing Views</div><div class="kpi-value purple">${fmt(lpv)}</div><div class="kpi-sub">visualizações da página</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-blue"></span>Conv. Cliques → Lead</div><div class="kpi-value purple">${convRate > 0 ? pct(convRate) : '—'}</div><div class="kpi-sub">${fmt(leads)} de ${fmt(clicks)} cliques</div></div>
   `;
 
   document.getElementById('kpiTrafego').innerHTML = kpiMode === 'secondary' ? secondaryHtml : primaryHtml;
