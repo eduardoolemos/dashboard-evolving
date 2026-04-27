@@ -100,6 +100,11 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .level-tab { padding:6px 14px; border-radius:5px; background:transparent; color:var(--text2); cursor:pointer; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; transition:all 0.15s; border:none; }
 .level-tab.active { background:var(--teal-dim); color:var(--teal); }
 .level-tab:hover:not(.active) { color:var(--text); }
+.sort-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.sort-select { background:var(--bg2); border:1px solid var(--border2); border-radius:6px; padding:7px 10px; color:var(--white); font-family:var(--font-mono); font-size:10px; outline:none; min-width:140px; }
+.sort-select:focus { border-color:var(--teal); }
+.sort-btn { padding:7px 10px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--text2); cursor:pointer; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; }
+.sort-btn.active { border-color:var(--teal); color:var(--teal); background:var(--teal-dim); }
 
 .filter-bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px; padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
 .filter-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
@@ -505,10 +510,24 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
             <div class="card-title">Desempenho</div>
             <div class="card-sub" id="perfSub">Cruzamento entre Meta Ads e leads do funil</div>
           </div>
-          <div class="level-toggle">
-            <button class="level-tab active" data-level="campaign" onclick="setLevel('campaign')">Campanha</button>
-            <button class="level-tab" data-level="adset" onclick="setLevel('adset')">Conjunto</button>
-            <button class="level-tab" data-level="ad" onclick="setLevel('ad')">Anúncio</button>
+          <div class="sort-controls">
+            <div class="level-toggle">
+              <button class="level-tab active" data-level="campaign" onclick="setLevel('campaign')">Campanha</button>
+              <button class="level-tab" data-level="adset" onclick="setLevel('adset')">Conjunto</button>
+              <button class="level-tab" data-level="ad" onclick="setLevel('ad')">Anúncio</button>
+            </div>
+            <select class="sort-select" id="perfSortMetric" onchange="onPerfSortChange()">
+              <option value="spend">Verba</option>
+              <option value="leads">Leads</option>
+              <option value="mql">MQL</option>
+              <option value="agendada">Reun. Agendada</option>
+              <option value="confirmada">Reun. Confirmada</option>
+              <option value="callFeita">Call Feita</option>
+              <option value="cpl">CPL</option>
+              <option value="cpmql">CPMQL</option>
+            </select>
+            <button class="sort-btn active" id="sortDescBtn" onclick="setPerfSortOrder('desc')">Maior → Menor</button>
+            <button class="sort-btn" id="sortAscBtn" onclick="setPerfSortOrder('asc')">Menor → Maior</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -593,6 +612,8 @@ let chartDev = null, chartPerfis = null, chartAssign = null;
 let chartSpend = null, chartLeads = null;
 let currentTab = 'funil';
 let currentLevel = 'campaign';
+let perfSortMetric = 'spend';
+let perfSortOrder = 'desc';
 
 let RAW = { etapas:[], conv:[], ads:[], stages:{} };
 let filterFrom = null, filterTo = null;
@@ -1410,6 +1431,18 @@ function setLevel(level) {
   renderTrafego();
 }
 
+function onPerfSortChange() {
+  perfSortMetric = document.getElementById('perfSortMetric').value;
+  renderTrafego();
+}
+
+function setPerfSortOrder(order) {
+  perfSortOrder = order === 'asc' ? 'asc' : 'desc';
+  document.getElementById('sortDescBtn').classList.toggle('active', perfSortOrder === 'desc');
+  document.getElementById('sortAscBtn').classList.toggle('active', perfSortOrder === 'asc');
+  renderTrafego();
+}
+
 // ── FILTROS EM CASCATA ─────────────────
 function leadKeysInPeriod() {
   const rows = getTrafficLeadRows();
@@ -1888,7 +1921,26 @@ function renderPerfTable(adsRows) {
   addCount(confRows, 'confirmada');
   addCount(callRows, 'callFeita');
 
-  const sorted = Object.entries(map).sort((a,b) => b[1].spend - a[1].spend);
+  const getSortValue = (v) => {
+    switch (perfSortMetric) {
+      case 'leads': return v.leads || 0;
+      case 'mql': return v.mql || 0;
+      case 'agendada': return v.agendada || 0;
+      case 'confirmada': return v.confirmada || 0;
+      case 'callFeita': return v.callFeita || 0;
+      case 'cpl': return v.leads > 0 ? (v.spend / v.leads) : Number.POSITIVE_INFINITY;
+      case 'cpmql': return v.mql > 0 ? (v.spend / v.mql) : Number.POSITIVE_INFINITY;
+      case 'spend':
+      default: return v.spend || 0;
+    }
+  };
+
+  const sorted = Object.entries(map).sort((a,b) => {
+    const va = getSortValue(a[1]);
+    const vb = getSortValue(b[1]);
+    if (perfSortOrder === 'asc') return va - vb;
+    return vb - va;
+  });
   const tbody = document.getElementById('bodyTrafego');
 
   tbody.innerHTML = sorted.map(([key, v]) => {
@@ -1965,6 +2017,7 @@ document.getElementById('gidConversoes').value = GID_CONV;
 document.getElementById('gidAds').value        = GID_ADS;
 document.getElementById('sheetLink').value     = PUBLISHED_BASE;
 document.getElementById('campContains').value  = campaignContains;
+document.getElementById('perfSortMetric').value = perfSortMetric;
 renderStageConfigs();
 
 loadAll();
