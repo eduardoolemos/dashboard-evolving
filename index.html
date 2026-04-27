@@ -254,6 +254,11 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
       </div>
 
       <div class="config-field">
+        <label>Link da planilha publicada (CSV ou Publicada na Web)</label>
+        <input type="text" id="sheetLink" placeholder="Cole aqui a URL publicada da planilha">
+        <div class="config-hint">Usado para carregar dados e buscar GIDs automaticamente.</div>
+      </div>
+      <div class="config-field">
         <label>GID da aba "TRACK ETAPAS"</label>
         <input type="text" id="gidEtapas" placeholder="0">
         <div class="config-hint">Tracking de etapas do funil</div>
@@ -531,9 +536,9 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 
 <script>
 // ── CONFIG ──────────────────────────────
-const SHEET_ID = '1Nu2gUEKeBqZVFvpoDenUbGDheT3kTU7QsM1DQO_pFYM';
-const PUBLISHED_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkyevntG5ve-0g2ySy6kXHyARA6WcWAXwN85MFHM5bSs2rYMXBPlhXcPEJJIDk0GkJ0gezEX2oovvN/pub?output=csv';
-const EXPORT_BASE    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+let SHEET_ID = '1Nu2gUEKeBqZVFvpoDenUbGDheT3kTU7QsM1DQO_pFYM';
+let PUBLISHED_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkyevntG5ve-0g2ySy6kXHyARA6WcWAXwN85MFHM5bSs2rYMXBPlhXcPEJJIDk0GkJ0gezEX2oovvN/pub?output=csv';
+let EXPORT_BASE    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
 const CFG_KEY = 'chippu_dash_cfg_v3';
 const TRAFFIC_KEY = 'chippu_dash_traffic_v1';
@@ -555,6 +560,8 @@ let STAGE_CONFIGS = DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }));
 
 try {
   const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+  if (saved.sheetId) SHEET_ID = saved.sheetId;
+  if (saved.publishedBase) PUBLISHED_BASE = saved.publishedBase;
   if (saved.gidEtapas) GID_ETAPAS = saved.gidEtapas;
   if (saved.gidConv)   GID_CONV   = saved.gidConv;
   if (saved.gidAds)    GID_ADS    = saved.gidAds;
@@ -565,6 +572,7 @@ try {
     }));
   }
 } catch {}
+EXPORT_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
 const TELA_ORDER = [0,1,2,3,4,5,6,7,8,9];
 const TELA_NAMES = {
@@ -676,6 +684,12 @@ async function autoFillGidsFromSheet() {
   btn.textContent = 'Buscando...';
   status.textContent = 'Lendo abas da planilha e comparando nomes...';
   try {
+    const parsed = parseSheetLink(document.getElementById('sheetLink').value);
+    if (parsed?.publishedBase) PUBLISHED_BASE = parsed.publishedBase;
+    if (parsed?.sheetId) {
+      SHEET_ID = parsed.sheetId;
+      EXPORT_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+    }
     const tabs = await fetchSheetTabs();
 
     const mapMain = [
@@ -756,6 +770,29 @@ function parseCSV(text) {
     headers.forEach((h,i) => obj[h] = ((r[i]||'')+'').trim());
     return obj;
   });
+}
+
+function parseSheetLink(input) {
+  const url = String(input || '').trim();
+  if (!url) return null;
+
+  const mPub = url.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/([^/]+)\/pub(?:html)?(?:\?.*)?$/i);
+  if (mPub) {
+    return {
+      publishedBase: `https://docs.google.com/spreadsheets/d/e/${mPub[1]}/pub?output=csv`,
+      sheetId: ''
+    };
+  }
+
+  const mRaw = url.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([^/]+)\/.*$/i);
+  if (mRaw) {
+    return {
+      publishedBase: PUBLISHED_BASE,
+      sheetId: mRaw[1]
+    };
+  }
+
+  return null;
 }
 
 // ── LOAD ALL ───────────────────────────
@@ -1730,6 +1767,12 @@ function renderPerfTable(adsRows) {
 
 // ── SAVE CONFIG ────────────────────────
 function saveConfigAndLoad() {
+  const parsedSheet = parseSheetLink(document.getElementById('sheetLink').value);
+  if (parsedSheet?.publishedBase) PUBLISHED_BASE = parsedSheet.publishedBase;
+  if (parsedSheet?.sheetId) {
+    SHEET_ID = parsedSheet.sheetId;
+    EXPORT_BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+  }
   GID_ETAPAS = document.getElementById('gidEtapas').value.trim();
   GID_CONV   = document.getElementById('gidConversoes').value.trim();
   GID_ADS    = document.getElementById('gidAds').value.trim();
@@ -1739,7 +1782,12 @@ function saveConfigAndLoad() {
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS = [{ name: '', gid: '' }];
   try {
     localStorage.setItem(CFG_KEY, JSON.stringify({
-      gidEtapas: GID_ETAPAS, gidConv: GID_CONV, gidAds: GID_ADS, stageConfigs: STAGE_CONFIGS
+      sheetId: SHEET_ID,
+      publishedBase: PUBLISHED_BASE,
+      gidEtapas: GID_ETAPAS,
+      gidConv: GID_CONV,
+      gidAds: GID_ADS,
+      stageConfigs: STAGE_CONFIGS
     }));
   } catch {}
   currentTab = 'funil';
@@ -1750,6 +1798,7 @@ function saveConfigAndLoad() {
 document.getElementById('gidEtapas').value     = GID_ETAPAS;
 document.getElementById('gidConversoes').value = GID_CONV;
 document.getElementById('gidAds').value        = GID_ADS;
+document.getElementById('sheetLink').value     = PUBLISHED_BASE;
 document.getElementById('campContains').value  = campaignContains;
 renderStageConfigs();
 
