@@ -8,26 +8,32 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg:        #06080a;
-  --bg2:       #0a0e12;
-  --surface:   #0e1418;
-  --surface2:  #131c22;
-  --border:    #1a2830;
-  --border2:   #243640;
-  --teal:      #00c9b1;
-  --teal2:     #00e8cc;
-  --teal-dim:  rgba(0,201,177,0.08);
-  --red:       #ff4a4a;
-  --red-dim:   rgba(255,74,74,0.08);
-  --gold:      #f5c842;
-  --gold-dim:  rgba(245,200,66,0.08);
-  --purple:    #9b7ff4;
-  --purple-dim:rgba(155,127,244,0.08);
-  --text:      #a8c0c8;
-  --text2:     #4a6070;
-  --text3:     #253540;
-  --white:     #e8f4f8;
-  --font-head: 'Syne', sans-serif;
+  /* Arven tokens */
+  --arven-dark:  #eaefef;
+  --arven-blue:  #7f8caa;
+  --arven-ice:   #333446;
+  --arven-light: #16161f;
+
+  --bg:        #16161f;
+  --bg2:       #1a1a24;
+  --surface:   #1a1a24;
+  --surface2:  #222332;
+  --border:    #7f8caa33;
+  --border2:   #7f8caa4d;
+  --teal:      #7f8caa;
+  --teal2:     #8b9ab8;
+  --teal-dim:  rgba(127,140,170,0.14);
+  --red:       #d56c7a;
+  --red-dim:   rgba(213,108,122,0.14);
+  --gold:      #c7b27a;
+  --gold-dim:  rgba(199,178,122,0.14);
+  --purple:    #9aa6c2;
+  --purple-dim:rgba(154,166,194,0.14);
+  --text:      #c7cfdf;
+  --text2:     #7f8caa;
+  --text3:     #5a6378;
+  --white:     #eaefef;
+  --font-head: 'DM Sans', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'DM Mono', monospace;
 }
@@ -78,7 +84,7 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .dot-orange { background:#ff8a4a; }
 .dot-green { background:#38d39f; }
 .dot-pink { background:#ff5fa2; }
-.kpi-value { font-family:var(--font-head); font-size:38px; font-weight:800; color:var(--white); line-height:1; margin-bottom:6px; }
+.kpi-value { font-family:var(--font-mono); font-size:34px; font-weight:500; color:var(--white); line-height:1; margin-bottom:6px; letter-spacing:-0.02em; }
 .kpi-value.teal  { color:var(--teal); }
 .kpi-value.gold  { color:var(--gold); }
 .kpi-value.red   { color:var(--red); }
@@ -92,7 +98,7 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .col-span-2 { grid-column: span 2; }
 
 .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; }
-.card-title { font-family:var(--font-head); font-size:14px; font-weight:700; color:var(--white); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em; }
+.card-title { font-family:var(--font-body); font-size:13px; font-weight:700; color:var(--white); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.06em; }
 .card-sub { font-family:var(--font-mono); font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:20px; }
 .card-header-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
 .card-header-row .card-sub { margin-bottom:0; }
