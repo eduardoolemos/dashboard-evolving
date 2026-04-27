@@ -586,7 +586,7 @@ let chartSpend = null, chartLeads = null;
 let currentTab = 'funil';
 let currentLevel = 'campaign';
 
-let RAW = { etapas:[], conv:[], ads:[] };
+let RAW = { etapas:[], conv:[], ads:[], stages:{} };
 let filterFrom = null, filterTo = null;
 let campaignContains = '';
 
@@ -814,6 +814,14 @@ async function loadAll() {
       GID_ETAPAS ? safeFetch(GID_ETAPAS).then(d => RAW.etapas = d) : Promise.resolve(RAW.etapas = []),
       GID_CONV ? safeFetch(GID_CONV).then(d => RAW.conv = d) : Promise.resolve(RAW.conv = []),
     ];
+    RAW.stages = {};
+    STAGE_CONFIGS.forEach(s => {
+      const gid = String(s.gid || '').trim();
+      if (!gid) return;
+      jobs.push(
+        safeFetch(gid).then(d => { RAW.stages[gid] = d; })
+      );
+    });
     if (GID_ADS) {
       jobs.push(
         safeFetch(GID_ADS, true)
@@ -1227,6 +1235,17 @@ function getConvDateCol() {
 }
 
 function getTrafficLeadRows() {
+  const picked = [];
+  STAGE_CONFIGS.forEach(s => {
+    const gid = String(s.gid || '').trim();
+    if (!gid) return;
+    const n = normalizeName(s.name || '');
+    if (n.includes('typebot') || n.includes('recebe dados') || n.includes('entrada')) {
+      const rows = RAW.stages[gid] || [];
+      if (rows.length) picked.push(...rows);
+    }
+  });
+  if (picked.length) return picked;
   return RAW.etapas.length ? RAW.etapas : RAW.conv;
 }
 
