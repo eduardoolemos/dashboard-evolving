@@ -733,6 +733,19 @@ async function autoFillGidsFromSheet() {
 
 // ── CSV FETCH ──────────────────────────
 async function fetchCSV(gid, useExport=false) {
+  if (!gid && !useExport) throw new Error('GID da aba não informado.');
+
+  // Planilha publicada via /d/e/.../pub não aceita &gid no endpoint CSV.
+  // Nesses casos, carregamos a aba por gid no pubhtml/sheet e fazemos parse da tabela HTML.
+  if (!useExport && /\/spreadsheets\/d\/e\//.test(PUBLISHED_BASE)) {
+    const htmlUrl = PUBLISHED_BASE
+      .replace(/\/pub\?output=csv.*$/i, '/pubhtml/sheet?headers=false&gid=' + encodeURIComponent(gid));
+    const res = await fetch(htmlUrl);
+    if (!res.ok) throw new Error('Planilha não acessível. Verifique se está publicada na web.');
+    const html = await res.text();
+    return parsePublishedSheetHtml(html);
+  }
+
   const url = (useExport && EXPORT_BASE)
     ? EXPORT_BASE + '&gid=' + gid
     : PUBLISHED_BASE + '&gid=' + gid;
@@ -768,6 +781,32 @@ function parseCSV(text) {
   return rows.slice(1).map(r => {
     const obj = {};
     headers.forEach((h,i) => obj[h] = ((r[i]||'')+'').trim());
+    return obj;
+  });
+}
+
+function parsePublishedSheetHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const table = doc.querySelector('table.waffle');
+  if (!table) return [];
+
+  const matrix = [];
+  const trs = [...table.querySelectorAll('tr')];
+  trs.forEach(tr => {
+    const cells = [...tr.querySelectorAll('th,td')];
+    if (!cells.length) return;
+    // Primeira célula costuma ser cabeçalho de linha (1,2,3...)
+    const values = cells
+      .filter((cell, idx) => !(idx === 0 && cell.classList.contains('row-header')))
+      .map(cell => (cell.textContent || '').replace(/\u00a0/g, ' ').trim());
+    if (values.some(v => v)) matrix.push(values);
+  });
+
+  if (matrix.length < 2) return [];
+  const headers = matrix[0].map(h => (h || '').trim());
+  return matrix.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = ((r[i] || '') + '').trim(); });
     return obj;
   });
 }
