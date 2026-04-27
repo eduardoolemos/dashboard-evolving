@@ -506,7 +506,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
       </div>
       <div class="kpi-grid" id="kpiTrafego"></div>
 
-      <div class="kpi-mode-wrap">
+      <div class="kpi-mode-wrap" id="topRankingsSection" style="display:none;">
         <div class="sort-controls">
           <select class="sort-select" id="topSortMetric" onchange="onTopSortChange()">
             <option value="leads">Leads</option>
@@ -564,7 +564,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         </div>
       </details>
 
-      <div class="grid-2" style="margin-bottom:16px;">
+      <div class="grid-2" style="margin-bottom:16px;display:none;">
         <div class="card">
           <div class="card-title">Top Ads</div>
           <div class="card-sub">Maior volume de leads gerados</div>
@@ -669,7 +669,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <div class="card-header-row">
           <div>
             <div class="card-title">Desempenho</div>
-            <div class="card-sub" id="perfSub">Cruzamento entre Meta Ads e leads do funil</div>
+            <div class="card-sub" id="perfSub">Visão unificada de desempenho (campanha, conjunto ou anúncio)</div>
           </div>
           <div class="sort-controls">
             <div class="level-toggle">
