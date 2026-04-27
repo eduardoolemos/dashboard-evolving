@@ -455,6 +455,28 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <div id="campanhasConv"></div>
       </div>
     </div>
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">Top Ads de Qualificação</div>
+        <div class="card-sub">Lojista + faturamento >= 20 mil</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Anúncio</th><th>Qualificados</th><th>%</th></tr></thead>
+            <tbody id="bodyQualAds"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top Públicos de Qualificação</div>
+        <div class="card-sub">Lojista + faturamento >= 20 mil</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Público (Conjunto)</th><th>Qualificados</th><th>%</th></tr></thead>
+            <tbody id="bodyQualPublicos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">Últimas Conversões</div>
       <div class="card-sub">Leads que completaram o funil</div>
@@ -1816,6 +1838,35 @@ function renderConversoes(rows) {
     }
     return '';
   }
+  function parseMoneyBR(v) {
+    const s = String(v || '').trim();
+    if (!s) return 0;
+    const cleaned = s.replace(/[^\d.,-]/g, '');
+    if (!cleaned) return 0;
+    const num = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(num) ? num : 0;
+  }
+  function parseRevenueMin(v) {
+    const txt = normalizeName(v);
+    if (!txt) return 0;
+    const matches = String(v || '').match(/R?\$?\s*[\d\.\,]+/gi) || [];
+    const vals = matches.map(m => parseMoneyBR(m)).filter(n => n > 0);
+    if (txt.includes('menos de')) return 0;
+    if (txt.includes('mais de')) return vals[0] || 0;
+    if (vals.length >= 2) return Math.min(vals[0], vals[1]);
+    return vals[0] || 0;
+  }
+  function isLojistaAnswer(v) {
+    const txt = normalizeName(v);
+    if (!txt) return false;
+    if (txt.includes('nao') && txt.includes('lojista')) return false;
+    return txt.includes('lojista');
+  }
+  function isQualifiedLead(row) {
+    const lojista = row.lojista_resp || getFieldByAliases(row, ['Lojista', 'Você é lojista', 'Voce e lojista', 'Tipo de Negócio', 'Tipo de Negocio']);
+    const faturamento = row.faturamento_lojista || getFieldByAliases(row, ['Faturamento lojista', 'Faturamento']);
+    return isLojistaAnswer(lojista) && parseRevenueMin(faturamento) >= 20000;
+  }
 
   const typebotRows = getTrafficLeadRows();
   const byEmail = new Map();
@@ -1836,6 +1887,7 @@ function renderConversoes(rows) {
       campanha_resp: getLeadUtmCampaign(src) || String(r.utm_campaign || '').trim(),
       conjunto_resp: getLeadUtmContent(src) || String(r.utm_content || '').trim(),
       anuncio_resp: getLeadUtmTerm(src) || String(r.utm_term || '').trim(),
+      lojista_resp: getFieldByAliases(src, ['Lojista', 'Você é lojista', 'Voce e lojista', 'Tipo de Negócio', 'Tipo de Negocio']),
       prioridade: getFieldByAliases(src, ['Prioridade']),
       situacao_financeira: getFieldByAliases(src, ['Situação Financeira', 'Situacao Financeira']),
       urgencia: getFieldByAliases(src, ['Urgência', 'Urgencia']),
@@ -1885,6 +1937,10 @@ function renderConversoes(rows) {
     document.getElementById('kpiConversoes').innerHTML = '<div style="color:var(--text2);font-size:13px;grid-column:span 4;padding:20px 0;">Sem dados para o período selecionado.</div>';
     document.getElementById('controleGastos').innerHTML = '';
     document.getElementById('campanhasConv').innerHTML = '';
+    const bodyQa = document.getElementById('bodyQualAds');
+    const bodyQp = document.getElementById('bodyQualPublicos');
+    if (bodyQa) bodyQa.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text2);padding:18px;">Sem dados</td></tr>';
+    if (bodyQp) bodyQp.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text2);padding:18px;">Sem dados</td></tr>';
     document.getElementById('bodyConversoes').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
     return;
   }
@@ -1993,6 +2049,34 @@ function renderConversoes(rows) {
 
   const sortDateKey = dateCol || 'data_hora';
   const ultimasConv = [...completeRows].sort((a,b)=>(String(b[sortDateKey]||'')).localeCompare(String(a[sortDateKey]||''))).slice(0,10);
+
+  const qualifiedRows = completeRows.filter(isQualifiedLead);
+  function renderQualifiedTop(rows, nameKey, bodyId) {
+    const map = {};
+    rows.forEach(r => {
+      const k = (r[nameKey] || '').trim();
+      if (!k) return;
+      map[k] = (map[k] || 0) + 1;
+    });
+    const total = rows.length;
+    const ranked = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 8);
+    const body = document.getElementById(bodyId);
+    if (!body) return;
+    if (!ranked.length) {
+      body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text2);padding:18px;">Sem qualificados no filtro</td></tr>';
+      return;
+    }
+    body.innerHTML = ranked.map(([name, count]) => `
+      <tr>
+        <td class="td-name" title="${name}">${name}</td>
+        <td class="td-teal">${count}</td>
+        <td class="td-purple">${total > 0 ? pct((count / total) * 100) : '—'}</td>
+      </tr>
+    `).join('');
+  }
+  renderQualifiedTop(qualifiedRows, 'anuncio_resp', 'bodyQualAds');
+  renderQualifiedTop(qualifiedRows, 'conjunto_resp', 'bodyQualPublicos');
+
   document.getElementById('bodyConversoes').innerHTML = ultimasConv.map(r => `<tr>
     <td>${r.nome||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.email||'—'}</td>
