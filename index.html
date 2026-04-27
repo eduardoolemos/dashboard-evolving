@@ -267,8 +267,8 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('funil')">Funil de Etapas</div>
-  <div class="tab" onclick="switchTab('conversoes')">Conversões</div>
+  <div class="tab" style="display:none;" onclick="switchTab('funil')">Funil de Etapas</div>
+  <div class="tab active" onclick="switchTab('conversoes')">Conversões</div>
   <div class="tab" onclick="switchTab('trafego')">Métricas de Tráfego</div>
   <div class="tab" onclick="switchTab('config')">Config</div>
 </div>
@@ -869,7 +869,7 @@ const TELA_NAMES = {
 
 let chartDev = null, chartPerfis = null, chartAssign = null;
 let chartSpend = null, chartLeads = null;
-let currentTab = 'funil';
+let currentTab = 'conversoes';
 let currentLevel = 'campaign';
 let perfSortMetric = 'spend';
 let perfSortOrder = 'desc';
@@ -1587,7 +1587,7 @@ async function loadAll() {
       'Atualizado ' + new Date().toLocaleTimeString('pt-BR');
 
     document.getElementById('loadingScreen').style.display = 'none';
-    switchTab(currentTab === 'config' ? 'funil' : currentTab);
+    switchTab(currentTab === 'config' ? 'conversoes' : currentTab);
 
   } catch(e) {
     document.getElementById('loadingScreen').innerHTML = `
@@ -3323,7 +3323,7 @@ function saveConfigAndLoad() {
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS = [{ name: '', gid: '' }];
   syncGlobalsToActiveFunnel();
   persistConfigState();
-  currentTab = 'funil';
+  currentTab = 'conversoes';
   loadAll();
 }
 
