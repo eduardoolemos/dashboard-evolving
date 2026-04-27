@@ -175,6 +175,7 @@ tbody tr { border-bottom:1px solid var(--border); transition:background 0.15s; }
 tbody tr:hover { background:var(--surface2); }
 tbody tr:last-child { border-bottom:none; }
 .top-click-row { cursor:pointer; }
+.perf-click-row { cursor:pointer; }
 tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 .td-mono { font-family:var(--font-mono); font-size:12px; }
 .td-teal { color:var(--teal); font-family:var(--font-mono); font-size:12px; }
@@ -2241,6 +2242,23 @@ function filterByTopRow(level, name) {
   const adsetSel = document.getElementById('adsetSelect');
   const adSel = document.getElementById('adSelect');
 
+  if (level === 'campaign') {
+    if (campSel) {
+      const isSame = campSel.value === name;
+      if (isSame) {
+        campSel.value = '';
+        onCampaignChange();
+        return;
+      }
+    }
+    if (adsetSel) adsetSel.value = '';
+    if (adSel) adSel.value = '';
+    rebuildAllFilters();
+    if (campSel) campSel.value = name;
+    onCampaignChange();
+    return;
+  }
+
   if (level === 'adset') {
     if (adsetSel) {
       const isSame = adsetSel.value === name;
@@ -2958,7 +2976,8 @@ function renderPerfTable(adsRows) {
     const cCall = v.callFeita > 0 ? v.spend / v.callFeita : 0;
     const conv_c = v.clicks > 0 && v.leads > 0 ? v.leads / v.clicks * 100 : 0;
 
-    return `<tr>
+    const encodedName = encodeURIComponent(v.displayName || '');
+    return `<tr class="perf-click-row" data-name="${encodedName}">
       <td class="td-name" title="${v.displayName}">${v.displayName}</td>
       <td class="td-red" data-metric="spend">${brl(v.spend)}</td>
       <td class="td-mono">${fmt(v.imp)}</td>
@@ -2986,6 +3005,11 @@ function renderPerfTable(adsRows) {
   if (!sorted.length) {
     tbody.innerHTML = '<tr><td colspan="21" style="text-align:center;color:var(--text2);padding:28px;">Nenhum dado para o filtro atual</td></tr>';
   }
+  tbody.querySelectorAll('tr.perf-click-row').forEach(rowEl => {
+    const raw = rowEl.getAttribute('data-name') || '';
+    const name = decodeURIComponent(raw);
+    rowEl.addEventListener('click', () => filterByTopRow(currentLevel, name));
+  });
   applyMetricColumnVisibility();
 }
 
