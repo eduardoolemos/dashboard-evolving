@@ -115,10 +115,14 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .sort-btn { padding:7px 10px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--text2); cursor:pointer; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; }
 .sort-btn.active { border-color:var(--teal); color:var(--teal); background:var(--teal-dim); }
 .metric-chooser { margin:0 0 16px; border:1px solid var(--border2); border-radius:10px; background:var(--bg2); padding:10px 12px; }
-.metric-chooser-title { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text2); margin-bottom:8px; }
+.metric-chooser-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.metric-chooser-title { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text2); }
 .metric-chooser-grid { display:flex; flex-wrap:wrap; gap:7px 12px; }
 .metric-chip { display:flex; align-items:center; gap:6px; color:var(--text); font-family:var(--font-mono); font-size:10px; }
 .metric-chip input { accent-color: var(--teal); }
+.metric-chooser-actions { display:flex; gap:6px; }
+.metric-action-btn { padding:5px 8px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--text2); cursor:pointer; font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em; }
+.metric-action-btn:hover { border-color:var(--teal); color:var(--teal); background:var(--teal-dim); }
 .kpi-mode-wrap { display:flex; justify-content:flex-end; margin-bottom:10px; }
 
 .filter-bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px; padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
@@ -506,7 +510,13 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         </div>
       </div>
       <div class="metric-chooser">
-        <div class="metric-chooser-title">Selecionar métricas visíveis</div>
+        <div class="metric-chooser-head">
+          <div class="metric-chooser-title">Selecionar métricas visíveis</div>
+          <div class="metric-chooser-actions">
+            <button type="button" class="metric-action-btn" onclick="selectAllVisibleMetrics()">Marcar tudo</button>
+            <button type="button" class="metric-action-btn" onclick="clearAllVisibleMetrics()">Limpar tudo</button>
+          </div>
+        </div>
         <div class="metric-chooser-grid" id="metricChooserGrid">
           <label class="metric-chip"><input type="checkbox" data-metric="spend" onchange="onVisibleMetricsChange()"> Verba</label>
           <label class="metric-chip"><input type="checkbox" data-metric="leads" onchange="onVisibleMetricsChange()"> Leads</label>
@@ -2023,6 +2033,36 @@ function onVisibleMetricsChange() {
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
       visibleMetrics: Array.from(visibleMetrics)
+    }));
+  } catch {}
+  applyMetricColumnVisibility();
+  renderTrafego();
+}
+
+function selectAllVisibleMetrics() {
+  const all = Array.from(document.querySelectorAll('#metricChooserGrid input[type="checkbox"][data-metric]'))
+    .map(inp => inp.getAttribute('data-metric'))
+    .filter(Boolean);
+  if (!all.length) return;
+  visibleMetrics = new Set(all);
+  syncMetricChooserFromState();
+  try {
+    localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
+      campaignContains,
+      visibleMetrics: Array.from(visibleMetrics)
+    }));
+  } catch {}
+  applyMetricColumnVisibility();
+  renderTrafego();
+}
+
+function clearAllVisibleMetrics() {
+  visibleMetrics = new Set();
+  syncMetricChooserFromState();
+  try {
+    localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
+      campaignContains,
+      visibleMetrics: []
     }));
   } catch {}
   applyMetricColumnVisibility();
