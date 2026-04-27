@@ -1272,11 +1272,22 @@ function isPaidLeadRow(r) {
 }
 
 function isMqlRow(r) {
-  const keys = ['qualificacao', 'qualificação', 'qualificado', 'status', 'mql', 'termo'];
-  let txt = '';
-  for (const k of keys) txt += ' ' + (r[k] || r[k.toUpperCase()] || '');
-  const n = normKey(txt);
-  return n.includes('qualificado') && !n.includes('desqualificado');
+  const entries = Object.entries(r || {});
+  const qualEntry = entries.find(([k]) => {
+    const nk = normalizeName(k).replace(/\s+/g, '');
+    return nk.includes('qualificacao') || nk.includes('qualificado') || nk === 'mql' || nk.includes('status');
+  });
+
+  if (qualEntry) {
+    const v = normalizeName(qualEntry[1]);
+    if (!v) return false;
+    if (v.includes('desqualificado')) return false;
+    if (v.includes('qualificado') || v === 'mql' || v === 'sim' || v === 'true' || v === '1') return true;
+  }
+
+  // Fallback defensivo quando a coluna vier com nome inesperado
+  const rowText = normalizeName(Object.values(r || {}).join(' '));
+  return rowText.includes('qualificado') && !rowText.includes('desqualificado');
 }
 
 function getTrafficLeadStats() {
