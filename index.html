@@ -67,6 +67,7 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--font-body
 .loading-txt { font-family:var(--font-mono); font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:0.1em; }
 
 .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+#kpiTrafego { grid-template-columns:repeat(3,1fr); }
 .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; overflow:hidden; transition:border-color 0.2s; }
 .kpi-card:hover { border-color:var(--border2); }
 .kpi-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
@@ -233,6 +234,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 
 @media (max-width: 900px) {
   .kpi-grid { grid-template-columns:repeat(2,1fr); }
+  #kpiTrafego { grid-template-columns:repeat(2,1fr); }
   .grid-2, .grid-3 { grid-template-columns:1fr; }
   .col-span-2 { grid-column:span 1; }
   .container { padding:20px 16px; }
@@ -2693,6 +2695,7 @@ function renderTrafego() {
     getStageRowsByAliases(['No-Show', 'No Show']),
     { fCamp, fAdset, fAd, campPattern }
   );
+  const txNoShow = confirmadas > 0 && noShow > 0 ? (noShow / confirmadas * 100) : 0;
   const custoContato = agendadas > 0 && spend > 0 ? spend / agendadas : 0;
   const custoConfirmada = confirmadas > 0 && spend > 0 ? spend / confirmadas : 0;
   const custoNoShow = noShow > 0 && spend > 0 ? spend / noShow : 0;
@@ -2700,7 +2703,6 @@ function renderTrafego() {
   const custoLpv = lpv > 0 && spend > 0 ? spend / lpv : 0;
 
   const primaryHtml = `
-    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">no período</div></div>
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Leads Captados</div><div class="kpi-value teal">${fmt(leads)}</div><div class="kpi-sub">conversões no período</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo por Lead (CPL)</div><div class="kpi-value gold small">${leads > 0 ? brl(cpl) : '—'}</div><div class="kpi-sub">verba ÷ leads</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Taxa Qualificação</div><div class="kpi-value purple">${txQualificacao > 0 ? pct(txQualificacao) : '—'}</div><div class="kpi-sub">MQL ÷ Leads</div></div>
@@ -2708,18 +2710,22 @@ function renderTrafego() {
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-blue"></span>MQL</div><div class="kpi-value teal">${fmt(mql)}</div><div class="kpi-sub">qualificação = qualificado</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>CPMQL</div><div class="kpi-value gold small">${mql > 0 ? brl(cpmql) : '—'}</div><div class="kpi-sub">verba ÷ MQL</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx MQL → Contato</div><div class="kpi-value purple">${txMqlToContato > 0 ? pct(txMqlToContato) : '—'}</div><div class="kpi-sub">contato ÷ MQL</div></div>
-    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Reunião Agendada</div><div class="kpi-value purple">${fmt(agendadas)}</div><div class="kpi-sub">contato de confirmação</div></div>
 
-    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo por Agendada</div><div class="kpi-value gold small">${agendadas > 0 ? brl(custoContato) : '—'}</div><div class="kpi-sub">verba ÷ agendadas</div></div>
-    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Reunião Confirmada</div><div class="kpi-value teal">${fmt(confirmadas)}</div><div class="kpi-sub">call confirmada</div></div>
-    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Confirmada</div><div class="kpi-value gold small">${confirmadas > 0 ? brl(custoConfirmada) : '—'}</div><div class="kpi-sub">verba ÷ confirmadas</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-purple"></span>Reunião Agendada</div><div class="kpi-value teal">${fmt(agendadas)}</div><div class="kpi-sub">contato de confirmação</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo Agendada</div><div class="kpi-value gold small">${agendadas > 0 ? brl(custoContato) : '—'}</div><div class="kpi-sub">verba ÷ agendadas</div></div>
     <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Contato → Confirmada</div><div class="kpi-value purple">${txContatoToConfirmada > 0 ? pct(txContatoToConfirmada) : '—'}</div><div class="kpi-sub">confirmada ÷ contato</div></div>
 
-    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>No-Show</div><div class="kpi-value red">${fmt(noShow)}</div><div class="kpi-sub">etapa no-show</div></div>
-    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-gold"></span>Custo No-Show</div><div class="kpi-value gold small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
+    <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-teal"></span>Reunião Confirmada</div><div class="kpi-value teal">${fmt(confirmadas)}</div><div class="kpi-sub">call confirmada</div></div>
+    <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Confirmada</div><div class="kpi-value gold small">${confirmadas > 0 ? brl(custoConfirmada) : '—'}</div><div class="kpi-sub">verba ÷ confirmadas</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Confirmada → Call Feita</div><div class="kpi-value purple">${txConfirmadaToCallFeita > 0 ? pct(txConfirmadaToCallFeita) : '—'}</div><div class="kpi-sub">call feita ÷ confirmada</div></div>
+
     <div class="kpi-card teal"><div class="kpi-label"><span class="metric-dot dot-green"></span>Call Feita</div><div class="kpi-value teal">${fmt(callFeita)}</div><div class="kpi-sub">etapa call feita</div></div>
     <div class="kpi-card gold"><div class="kpi-label"><span class="metric-dot dot-orange"></span>Custo Call Feita</div><div class="kpi-value gold small">${callFeita > 0 ? brl(custoCallFeita) : '—'}</div><div class="kpi-sub">verba ÷ call feita</div></div>
-    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx Confirmada → Call Feita</div><div class="kpi-value purple">${txConfirmadaToCallFeita > 0 ? pct(txConfirmadaToCallFeita) : '—'}</div><div class="kpi-sub">call feita ÷ confirmada</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-red"></span>No-Show</div><div class="kpi-value purple">${fmt(noShow)}</div><div class="kpi-sub">perda na etapa</div></div>
+
+    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Custo No-Show</div><div class="kpi-value red small">${noShow > 0 ? brl(custoNoShow) : '—'}</div><div class="kpi-sub">verba ÷ no-show</div></div>
+    <div class="kpi-card purple"><div class="kpi-label"><span class="metric-dot dot-pink"></span>Tx No-Show</div><div class="kpi-value purple">${txNoShow > 0 ? pct(txNoShow) : '—'}</div><div class="kpi-sub">no-show ÷ confirmada</div></div>
+    <div class="kpi-card red"><div class="kpi-label"><span class="metric-dot dot-red"></span>Verba Gasta</div><div class="kpi-value red small">${brl(spend)}</div><div class="kpi-sub">base de custos</div></div>
   `;
 
   const secondaryHtml = `
