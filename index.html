@@ -301,6 +301,11 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <input type="text" id="gidAds" placeholder="907185909">
         <div class="config-hint">Dados do gerenciador de anúncios</div>
       </div>
+      <div class="config-field">
+        <label>Filtro padrão: nome da campanha contém</label>
+        <input type="text" id="defaultCampContains" placeholder="Ex: dia-das-maes" oninput="onDefaultCampaignPatternChange(this.value)">
+        <div class="config-hint">Este valor será aplicado automaticamente quando esta página/funil estiver ativa.</div>
+      </div>
       <div class="stage-config-wrap">
         <div class="stage-config-title">Etapas do processo (nome + GID da aba)</div>
         <div class="config-hint" style="margin-bottom:10px;">Adicione, edite e remova etapas conforme o funil do cliente.</div>
@@ -652,6 +657,7 @@ try {
       gidEtapas: String(f.gidEtapas || ''),
       gidConv: String(f.gidConv || ''),
       gidAds: String(f.gidAds || ''),
+      defaultCampContains: String(f.defaultCampContains || ''),
       stageConfigs: Array.isArray(f.stageConfigs) ? f.stageConfigs.map(s => ({
         name: String(s?.name || '').trim(),
         gid: String(s?.gid || '').trim()
@@ -673,6 +679,7 @@ if (!FUNNELS.length) {
     gidEtapas: GID_ETAPAS,
     gidConv: GID_CONV,
     gidAds: GID_ADS,
+    defaultCampContains: '',
     stageConfigs: STAGE_CONFIGS.map(s => ({ ...s }))
   }];
 }
@@ -729,6 +736,7 @@ function applyActiveFunnelToGlobals() {
   GID_ETAPAS = String(f.gidEtapas || '');
   GID_CONV = String(f.gidConv || '');
   GID_ADS = String(f.gidAds || '');
+  campaignContains = String(f.defaultCampContains || '');
   STAGE_CONFIGS = (f.stageConfigs || DEFAULT_STAGE_CONFIGS).map(s => ({ ...s }));
 }
 
@@ -740,6 +748,7 @@ function syncGlobalsToActiveFunnel() {
     gidEtapas: String(GID_ETAPAS || ''),
     gidConv: String(GID_CONV || ''),
     gidAds: String(GID_ADS || ''),
+    defaultCampContains: String(campaignContains || ''),
     stageConfigs: STAGE_CONFIGS.map(s => ({ ...s }))
   };
 }
@@ -777,7 +786,17 @@ function fillConfigInputsFromGlobals() {
   document.getElementById('gidEtapas').value = GID_ETAPAS;
   document.getElementById('gidConversoes').value = GID_CONV;
   document.getElementById('gidAds').value = GID_ADS;
+  document.getElementById('defaultCampContains').value = campaignContains;
+  document.getElementById('campContains').value = campaignContains;
   renderStageConfigs();
+}
+
+function onDefaultCampaignPatternChange(value) {
+  campaignContains = String(value || '').trim();
+  const trafficInp = document.getElementById('campContains');
+  if (trafficInp) trafficInp.value = campaignContains;
+  syncGlobalsToActiveFunnel();
+  persistConfigState();
 }
 
 function onConfigFunnelChange() {
@@ -812,6 +831,7 @@ function addFunnelPage() {
     gidEtapas: '',
     gidConv: '',
     gidAds: '',
+    defaultCampContains: '',
     stageConfigs: DEFAULT_STAGE_CONFIGS.map(s => ({ ...s }))
   });
   activeFunnelId = id;
@@ -1859,6 +1879,10 @@ function onCampaignContainsChange() {
   try {
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({ campaignContains }));
   } catch {}
+  const cfgInp = document.getElementById('defaultCampContains');
+  if (cfgInp) cfgInp.value = campaignContains;
+  syncGlobalsToActiveFunnel();
+  persistConfigState();
   document.getElementById('campSelect').value = '';
   document.getElementById('adsetSelect').value = '';
   document.getElementById('adSelect').value = '';
