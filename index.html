@@ -886,14 +886,12 @@ async function fetchSheetTabs() {
 
   // Formato alternativo (Google pubhtml): items.push({name:"...", pageUrl:"...gid=123..."})
   if (!tabs.length) {
-    const reItems = /items\.push\(\{name:\s*"([^"]+)",\s*pageUrl:\s*"([^"]+)"\}\)/g;
+    const reItems = /items\.push\(\{name:\s*["']([^"']+)["']\s*,\s*pageUrl:\s*["']([^"']+)["'][^}]*?\bgid:\s*["'](\d+)["']/gi;
     let item;
     while ((item = reItems.exec(html)) !== null) {
       const rawName = (item[1] || '').trim();
-      const rawPageUrl = (item[2] || '').replace(/\\\//g, '/');
-      const gidMatch = /gid=(\d+)/.exec(rawPageUrl);
-      if (!rawName || !gidMatch) continue;
-      const gid = gidMatch[1];
+      const gid = (item[3] || '').trim();
+      if (!rawName || !gid) continue;
       if (!tabs.some(t => t.gid === gid && t.title === rawName)) tabs.push({ gid, title: rawName });
     }
   }
