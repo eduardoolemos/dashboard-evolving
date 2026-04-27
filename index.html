@@ -267,10 +267,10 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('funil')">🔽 Funil de Etapas</div>
-  <div class="tab" onclick="switchTab('conversoes')">✅ Conversões</div>
-  <div class="tab" onclick="switchTab('trafego')">📊 Métricas de Tráfego</div>
-  <div class="tab" onclick="switchTab('config')">⚙️ Config</div>
+  <div class="tab active" onclick="switchTab('funil')">Funil de Etapas</div>
+  <div class="tab" onclick="switchTab('conversoes')">Conversões</div>
+  <div class="tab" onclick="switchTab('trafego')">Métricas de Tráfego</div>
+  <div class="tab" onclick="switchTab('config')">Config</div>
 </div>
 
 <div class="container">
@@ -406,6 +406,24 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
           <button class="period-tab active" onclick="applyConversoesDateFilter()">Aplicar</button>
           <button class="period-tab" onclick="clearConversoesDateFilter()">Limpar</button>
         </div>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Campanha:</span>
+        <select class="camp-select" id="convCampSelect" onchange="onConvCampChange()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Conjunto:</span>
+        <select class="camp-select" id="convAdsetSelect" onchange="onConvAdsetChange()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Anúncio:</span>
+        <select class="camp-select" id="convAdSelect" onchange="onConvAdChange()">
+          <option value="">Todos</option>
+        </select>
       </div>
     </div>
     <div class="kpi-grid" id="kpiConversoes"></div>
@@ -1747,6 +1765,37 @@ function clearConversoesDateFilter() {
   renderConversoes(RAW_CONV_VIEW);
 }
 
+function fillConvSelect(id, items, current, allLabel) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = `<option value="">${allLabel}</option>`;
+  items.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n;
+    o.textContent = n.length > 60 ? n.slice(0, 58) + '…' : n;
+    sel.appendChild(o);
+  });
+  sel.value = (current && items.includes(current)) ? current : '';
+}
+
+function onConvCampChange() {
+  const adsetSel = document.getElementById('convAdsetSelect');
+  const adSel = document.getElementById('convAdSelect');
+  if (adsetSel) adsetSel.value = '';
+  if (adSel) adSel.value = '';
+  renderConversoes(RAW_CONV_VIEW);
+}
+
+function onConvAdsetChange() {
+  const adSel = document.getElementById('convAdSelect');
+  if (adSel) adSel.value = '';
+  renderConversoes(RAW_CONV_VIEW);
+}
+
+function onConvAdChange() {
+  renderConversoes(RAW_CONV_VIEW);
+}
+
 function renderConversoes(rows) {
   if (!rows.length) {
     document.getElementById('kpiConversoes').innerHTML = '<div style="color:var(--text2);font-size:13px;grid-column:span 4;padding:20px 0;">Sem dados na aba CONVERSOES e também sem dados na Entrada Typebot para fallback.</div>';
@@ -1784,6 +1833,9 @@ function renderConversoes(rows) {
     const src = byEmail.get(em) || byPhone.get(ph) || r;
     return {
       ...r,
+      campanha_resp: getLeadUtmCampaign(src) || String(r.utm_campaign || '').trim(),
+      conjunto_resp: getLeadUtmContent(src) || String(r.utm_content || '').trim(),
+      anuncio_resp: getLeadUtmTerm(src) || String(r.utm_term || '').trim(),
       prioridade: getFieldByAliases(src, ['Prioridade']),
       situacao_financeira: getFieldByAliases(src, ['Situação Financeira', 'Situacao Financeira']),
       urgencia: getFieldByAliases(src, ['Urgência', 'Urgencia']),
@@ -1801,7 +1853,27 @@ function renderConversoes(rows) {
     if (convDateTo && d > convDateTo) return false;
     return true;
   });
-  const completeRows = filteredRows.filter(r => {
+  const convCamp = document.getElementById('convCampSelect')?.value || '';
+  const convAdset = document.getElementById('convAdsetSelect')?.value || '';
+  const convAd = document.getElementById('convAdSelect')?.value || '';
+
+  const campOptions = [...new Set(filteredRows.map(r => r.campanha_resp).filter(Boolean))].sort();
+  fillConvSelect('convCampSelect', campOptions, convCamp, 'Todas');
+  const selectedCamp = document.getElementById('convCampSelect')?.value || '';
+
+  const rowsByCamp = selectedCamp ? filteredRows.filter(r => r.campanha_resp === selectedCamp) : filteredRows;
+  const adsetOptions = [...new Set(rowsByCamp.map(r => r.conjunto_resp).filter(Boolean))].sort();
+  fillConvSelect('convAdsetSelect', adsetOptions, convAdset, 'Todos');
+  const selectedAdset = document.getElementById('convAdsetSelect')?.value || '';
+
+  const rowsByAdset = selectedAdset ? rowsByCamp.filter(r => r.conjunto_resp === selectedAdset) : rowsByCamp;
+  const adOptions = [...new Set(rowsByAdset.map(r => r.anuncio_resp).filter(Boolean))].sort();
+  fillConvSelect('convAdSelect', adOptions, convAd, 'Todos');
+  const selectedAd = document.getElementById('convAdSelect')?.value || '';
+
+  const filteredBySelectors = rowsByAdset.filter(r => !selectedAd || r.anuncio_resp === selectedAd);
+
+  const completeRows = filteredBySelectors.filter(r => {
     return (r.prioridade || '').trim()
       && (r.situacao_financeira || '').trim()
       && (r.urgencia || '').trim()
@@ -1930,7 +2002,7 @@ function renderConversoes(rows) {
     <td style="font-size:12px;color:var(--text2);">${r.urgencia||'—'}</td>
     <td style="font-size:12px;color:var(--text2);">${r.estoque||'—'}</td>
     <td style="font-size:12px;color:var(--text2);">${r.faturamento_lojista||'—'}</td>
-    <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.utm_campaign||'(direto)'}</td>
+    <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.campanha_resp||'(direto)'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${String(r[sortDateKey]||'').slice(0,16)||'—'}</td>
   </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
 }
