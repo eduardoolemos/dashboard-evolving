@@ -281,8 +281,8 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <div class="funnel-row">
           <select class="camp-select" id="configFunnelSelect" onchange="onConfigFunnelChange()"></select>
           <input class="funnel-input" id="newFunnelName" type="text" placeholder="Nome da nova página">
-          <button class="btn-stage-add" onclick="addFunnelPage()">+ Nova Página</button>
-          <button class="btn-stage-remove" onclick="removeFunnelPage()">Excluir Página</button>
+          <button type="button" class="btn-stage-add" onclick="addFunnelPage()">+ Nova Página</button>
+          <button type="button" class="btn-stage-remove" onclick="removeFunnelPage()">Excluir Página</button>
         </div>
         <div class="config-hint">Cada página mantém seus próprios GIDs e etapas.</div>
       </div>
@@ -305,9 +305,9 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <div class="stage-config-title">Etapas do processo (nome + GID da aba)</div>
         <div class="config-hint" style="margin-bottom:10px;">Adicione, edite e remova etapas conforme o funil do cliente.</div>
         <div class="stage-config-list" id="stageConfigList"></div>
-        <button class="btn-stage-add" onclick="addStageConfig()">+ Adicionar etapa</button>
+        <button type="button" class="btn-stage-add" onclick="addStageConfig()">+ Adicionar etapa</button>
       </div>
-      <button class="btn-ghost" id="btnAutoGid" onclick="autoFillGidsFromSheet()">Buscar GIDs automático</button>
+      <button type="button" class="btn-ghost" id="btnAutoGid" onclick="autoFillGidsFromSheet()">Buscar GIDs automático</button>
       <div class="config-status" id="autoGidStatus"></div>
       <button class="btn-load" onclick="saveConfigAndLoad()">Carregar Dashboard →</button>
     </div>
@@ -744,6 +744,21 @@ function syncGlobalsToActiveFunnel() {
   };
 }
 
+function persistConfigState() {
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify({
+      sheetId: SHEET_ID,
+      publishedBase: PUBLISHED_BASE,
+      gidEtapas: GID_ETAPAS,
+      gidConv: GID_CONV,
+      gidAds: GID_ADS,
+      stageConfigs: STAGE_CONFIGS,
+      activeFunnelId,
+      funnels: FUNNELS
+    }));
+  } catch {}
+}
+
 function renderFunnelSelectors() {
   const items = FUNNELS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
   const cfg = document.getElementById('configFunnelSelect');
@@ -772,6 +787,7 @@ function onConfigFunnelChange() {
   applyActiveFunnelToGlobals();
   renderFunnelSelectors();
   fillConfigInputsFromGlobals();
+  persistConfigState();
 }
 
 function onTrafficFunnelChange() {
@@ -781,6 +797,7 @@ function onTrafficFunnelChange() {
   applyActiveFunnelToGlobals();
   renderFunnelSelectors();
   fillConfigInputsFromGlobals();
+  persistConfigState();
   loadAll();
 }
 
@@ -802,6 +819,7 @@ function addFunnelPage() {
   renderFunnelSelectors();
   fillConfigInputsFromGlobals();
   document.getElementById('newFunnelName').value = '';
+  persistConfigState();
 }
 
 function removeFunnelPage() {
@@ -813,6 +831,7 @@ function removeFunnelPage() {
   applyActiveFunnelToGlobals();
   renderFunnelSelectors();
   fillConfigInputsFromGlobals();
+  persistConfigState();
 }
 
 function renderStageConfigs() {
@@ -831,12 +850,14 @@ function onStageConfigChange(index, field, value) {
   if (!STAGE_CONFIGS[index]) return;
   STAGE_CONFIGS[index][field] = String(value || '').trim();
   syncGlobalsToActiveFunnel();
+  persistConfigState();
 }
 
 function addStageConfig() {
   STAGE_CONFIGS.push({ name: '', gid: '' });
   renderStageConfigs();
   syncGlobalsToActiveFunnel();
+  persistConfigState();
 }
 
 function removeStageConfig(index) {
@@ -844,6 +865,7 @@ function removeStageConfig(index) {
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS.push({ name: '', gid: '' });
   renderStageConfigs();
   syncGlobalsToActiveFunnel();
+  persistConfigState();
 }
 
 function normalizeName(v) {
@@ -945,6 +967,7 @@ async function autoFillGidsFromSheet() {
 
     syncGlobalsFromConfigInputs();
     syncGlobalsToActiveFunnel();
+    persistConfigState();
     status.textContent = matched
       ? `GIDs preenchidos automaticamente: ${matched}.`
       : 'Nenhum GID novo encontrado por nome. Revise os nomes das etapas.';
@@ -2231,18 +2254,7 @@ function saveConfigAndLoad() {
     .filter(s => s.name || s.gid);
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS = [{ name: '', gid: '' }];
   syncGlobalsToActiveFunnel();
-  try {
-    localStorage.setItem(CFG_KEY, JSON.stringify({
-      sheetId: SHEET_ID,
-      publishedBase: PUBLISHED_BASE,
-      gidEtapas: GID_ETAPAS,
-      gidConv: GID_CONV,
-      gidAds: GID_ADS,
-      stageConfigs: STAGE_CONFIGS,
-      activeFunnelId,
-      funnels: FUNNELS
-    }));
-  } catch {}
+  persistConfigState();
   currentTab = 'funil';
   loadAll();
 }
