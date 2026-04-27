@@ -174,6 +174,7 @@ thead th { font-family:var(--font-mono); font-size:10px; text-transform:uppercas
 tbody tr { border-bottom:1px solid var(--border); transition:background 0.15s; }
 tbody tr:hover { background:var(--surface2); }
 tbody tr:last-child { border-bottom:none; }
+.top-click-row { cursor:pointer; }
 tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 .td-mono { font-family:var(--font-mono); font-size:12px; }
 .td-teal { color:var(--teal); font-family:var(--font-mono); font-size:12px; }
@@ -1902,6 +1903,21 @@ function onAdsetChange() {
   renderTrafego();
 }
 
+function filterByTopRow(level, name) {
+  if (!name) return;
+  if (level === 'adset') {
+    const adsetSel = document.getElementById('adsetSelect');
+    if (adsetSel) adsetSel.value = name;
+    onAdsetChange();
+    return;
+  }
+  if (level === 'ad') {
+    const adSel = document.getElementById('adSelect');
+    if (adSel) adSel.value = name;
+    renderTrafego();
+  }
+}
+
 function onToggleLeads() {
   rebuildAllFilters();
   renderTrafego();
@@ -2024,7 +2040,7 @@ function renderTopLeadBlocks(adsRows) {
       const cConfirmada = v.confirmada > 0 ? (v.spend / v.confirmada) : 0;
       const cNoShow = v.noShow > 0 ? (v.spend / v.noShow) : 0;
       const cCallFeita = v.callFeita > 0 ? (v.spend / v.callFeita) : 0;
-      return `<tr>
+      return `<tr class="top-click-row">
         <td class="td-name" title="${v.displayName}">${v.displayName}</td>
         <td class="td-red" data-metric="spend">${brl(v.spend)}</td>
         <td class="td-teal" data-metric="leads">${v.leads > 0 ? fmt(v.leads) : '<span class="td-na">—</span>'}</td>
@@ -2044,6 +2060,11 @@ function renderTopLeadBlocks(adsRows) {
         <td class="td-gold" data-metric="cCallFeita">${v.callFeita > 0 ? brl(cCallFeita) : '<span class="td-na">—</span>'}</td>
       </tr>`;
     }).join('');
+
+    body.querySelectorAll('tr.top-click-row').forEach(rowEl => {
+      const name = rowEl.querySelector('td.td-name')?.getAttribute('title') || '';
+      rowEl.addEventListener('click', () => filterByTopRow(level, name));
+    });
   }
 
   mount('ad', 'bodyTopAds');
