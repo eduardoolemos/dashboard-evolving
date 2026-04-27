@@ -524,6 +524,14 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
               <th>CPC</th>
               <th>Leads</th>
               <th>CPL</th>
+              <th>MQL</th>
+              <th>CPMQL</th>
+              <th>Reun. Agendada</th>
+              <th>Custo Agendada</th>
+              <th>Reun. Confirmada</th>
+              <th>Custo Confirmada</th>
+              <th>Call Feita</th>
+              <th>Custo Call Feita</th>
               <th>Conv. %</th>
             </tr></thead>
             <tbody id="bodyTrafego"></tbody>
@@ -1828,6 +1836,10 @@ function renderTrafego() {
 function renderPerfTable(adsRows) {
   const leadRows = getTrafficLeadRows();
   const dateCol = getTrafficLeadDateCol(leadRows);
+  const mqlRows = leadRows.filter(isMqlRow);
+  const agRows = getStageRowsByAliases(['Contato de Confirmacao', 'Contato de Confirmação']);
+  const confRows = getStageRowsByAliases(['Call Confirmada', 'Reuniao Confirmada', 'Reunião Confirmada']);
+  const callRows = getStageRowsByAliases(['Call Feita']);
 
   const convUtmKey = currentLevel === 'campaign' ? 'utm_campaign'
                    : currentLevel === 'adset'    ? 'utm_content'
@@ -1844,31 +1856,37 @@ function renderPerfTable(adsRows) {
     const adsName = adsNameFn(r);
     if (!adsName) return;
     const key = normKey(adsName);
-    if (!map[key]) map[key] = { spend:0, imp:0, clicks:0, lpv:0, leads:0, displayName: adsName };
+    if (!map[key]) {
+      map[key] = {
+        spend:0, imp:0, clicks:0, lpv:0, leads:0, mql:0,
+        agendada:0, confirmada:0, callFeita:0, displayName: adsName
+      };
+    }
     map[key].spend  += getSpend(r);
     map[key].imp    += getImp(r);
     map[key].clicks += getClicks(r);
     map[key].lpv    += getLPV(r);
   });
 
-  // ── PASSO 2: Conta leads das conversões, linkando pelo UTM (case-insensitive)
-  leadRows.forEach(r => {
-    // Valida UTM
-    const utmVal = (r[convUtmKey] || '').trim();
-    if (!utmVal || utmVal === '-' || utmVal.startsWith('{{')) return;
+  function addCount(rows, field) {
+    const rowDateCol = getTrafficLeadDateCol(rows);
+    rows.forEach(r => {
+      const utmVal = (r[convUtmKey] || '').trim();
+      if (!utmVal || utmVal === '-' || utmVal.startsWith('{{')) return;
+      if (rowDateCol) {
+        const d = parseDate(r[rowDateCol]);
+        if (!inPeriod(d)) return;
+      }
+      const key = normKey(utmVal);
+      if (map[key]) map[key][field]++;
+    });
+  }
 
-    // Filtra período
-    if (dateCol) {
-      const d = parseDate(r[dateCol]);
-      if (!inPeriod(d)) return;
-    }
-
-    const key = normKey(utmVal);
-    if (map[key]) {
-      map[key].leads++;
-    }
-    // Se não achou match exato, não conta (evita false positives)
-  });
+  addCount(leadRows, 'leads');
+  addCount(mqlRows, 'mql');
+  addCount(agRows, 'agendada');
+  addCount(confRows, 'confirmada');
+  addCount(callRows, 'callFeita');
 
   const sorted = Object.entries(map).sort((a,b) => b[1].spend - a[1].spend);
   const tbody = document.getElementById('bodyTrafego');
@@ -1878,6 +1896,10 @@ function renderPerfTable(adsRows) {
     const cpm_c  = v.imp    > 0 ? v.spend  / v.imp * 1000: 0;
     const cpc_c  = v.clicks > 0 ? v.spend  / v.clicks    : 0;
     const cpl_c  = v.leads  > 0 ? v.spend  / v.leads     : 0;
+    const cpmql_c = v.mql > 0 ? v.spend / v.mql : 0;
+    const cAg = v.agendada > 0 ? v.spend / v.agendada : 0;
+    const cConf = v.confirmada > 0 ? v.spend / v.confirmada : 0;
+    const cCall = v.callFeita > 0 ? v.spend / v.callFeita : 0;
     const conv_c = v.clicks > 0 && v.leads > 0 ? v.leads / v.clicks * 100 : 0;
 
     return `<tr>
@@ -1891,12 +1913,20 @@ function renderPerfTable(adsRows) {
       <td class="td-mono">${v.clicks > 0 ? brl(cpc_c) : '<span class="td-na">—</span>'}</td>
       <td class="td-teal">${v.leads > 0 ? fmt(v.leads) : '<span class="td-na">—</span>'}</td>
       <td class="td-gold">${v.leads > 0 ? brl(cpl_c) : '<span class="td-na">—</span>'}</td>
+      <td class="td-teal">${v.mql > 0 ? fmt(v.mql) : '<span class="td-na">—</span>'}</td>
+      <td class="td-gold">${v.mql > 0 ? brl(cpmql_c) : '<span class="td-na">—</span>'}</td>
+      <td class="td-purple">${v.agendada > 0 ? fmt(v.agendada) : '<span class="td-na">—</span>'}</td>
+      <td class="td-gold">${v.agendada > 0 ? brl(cAg) : '<span class="td-na">—</span>'}</td>
+      <td class="td-purple">${v.confirmada > 0 ? fmt(v.confirmada) : '<span class="td-na">—</span>'}</td>
+      <td class="td-gold">${v.confirmada > 0 ? brl(cConf) : '<span class="td-na">—</span>'}</td>
+      <td class="td-purple">${v.callFeita > 0 ? fmt(v.callFeita) : '<span class="td-na">—</span>'}</td>
+      <td class="td-gold">${v.callFeita > 0 ? brl(cCall) : '<span class="td-na">—</span>'}</td>
       <td class="td-purple">${conv_c > 0 ? pct(conv_c) : '<span class="td-na">—</span>'}</td>
     </tr>`;
   }).join('');
 
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text2);padding:28px;">Nenhum dado para o filtro atual</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;color:var(--text2);padding:28px;">Nenhum dado para o filtro atual</td></tr>';
   }
 }
 
