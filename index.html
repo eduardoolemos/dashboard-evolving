@@ -1907,13 +1907,19 @@ function filterByTopRow(level, name) {
   if (!name) return;
   if (level === 'adset') {
     const adsetSel = document.getElementById('adsetSelect');
-    if (adsetSel) adsetSel.value = name;
+    if (adsetSel) {
+      const isSame = adsetSel.value === name;
+      adsetSel.value = isSame ? '' : name;
+    }
     onAdsetChange();
     return;
   }
   if (level === 'ad') {
     const adSel = document.getElementById('adSelect');
-    if (adSel) adSel.value = name;
+    if (adSel) {
+      const isSame = adSel.value === name;
+      adSel.value = isSame ? '' : name;
+    }
     renderTrafego();
   }
 }
