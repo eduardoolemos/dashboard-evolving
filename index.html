@@ -625,15 +625,40 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 
       <div class="grid-2" style="margin-bottom:24px;">
         <div class="card">
-          <div class="card-title">Verba Diária</div>
-          <div class="card-sub">Investimento por dia (R$)</div>
+          <div class="card-header-row" style="margin-bottom:10px;">
+            <div>
+              <div class="card-title">Custo Diário</div>
+              <div class="card-sub" id="dailyCostSub">Investimento por dia (R$)</div>
+            </div>
+            <select class="sort-select" id="dailyCostMetric" onchange="onDailyMetricChange()" style="min-width:190px;">
+              <option value="spend">Verba</option>
+              <option value="cpl">Custo por Lead</option>
+              <option value="cpmql">Custo por MQL</option>
+              <option value="cAgendada">Custo Contato</option>
+              <option value="cConfirmada">Custo Confirmada</option>
+              <option value="cNoShow">Custo No-Show</option>
+              <option value="cCallFeita">Custo Call Feita</option>
+            </select>
+          </div>
           <div class="chart-wrap" style="height:240px;">
             <canvas id="chartSpend"></canvas>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Leads por Dia</div>
-          <div class="card-sub">Conversões captadas no funil</div>
+          <div class="card-header-row" style="margin-bottom:10px;">
+            <div>
+              <div class="card-title">Métrica Diária</div>
+              <div class="card-sub" id="dailyValueSub">Conversões captadas no funil</div>
+            </div>
+            <select class="sort-select" id="dailyValueMetric" onchange="onDailyMetricChange()" style="min-width:190px;">
+              <option value="leads">Leads</option>
+              <option value="mql">MQL</option>
+              <option value="agendada">Contato de Confirmação</option>
+              <option value="confirmada">Call Confirmada</option>
+              <option value="noShow">No-Show</option>
+              <option value="callFeita">Call Feita</option>
+            </select>
+          </div>
           <div class="chart-wrap" style="height:240px;">
             <canvas id="chartLeads"></canvas>
           </div>
@@ -788,6 +813,8 @@ let perfSortOrder = 'desc';
 let kpiMode = 'primary';
 let topSortMetric = 'leads';
 let topSortOrder = 'desc';
+let dailyValueMetric = 'leads';
+let dailyCostMetric = 'spend';
 const DEFAULT_VISIBLE_METRICS = [
   'spend','leads','cpl','cpm','cpc','ctr','mql','cpmql','agendada','confirmada','noShow','callFeita',
   'cAgendada','cConfirmada','cNoShow','cCallFeita'
@@ -951,7 +978,9 @@ function buildSharePayload() {
     ],
     t: [
       campaignContains,
-      Array.from(visibleMetrics || [])
+      Array.from(visibleMetrics || []),
+      dailyValueMetric,
+      dailyCostMetric
     ]
   };
 }
@@ -962,6 +991,8 @@ try {
   if (Array.isArray(savedTraffic.visibleMetrics) && savedTraffic.visibleMetrics.length) {
     visibleMetrics = new Set(savedTraffic.visibleMetrics.map(v => String(v || '').trim()).filter(Boolean));
   }
+  if (savedTraffic.dailyValueMetric) dailyValueMetric = String(savedTraffic.dailyValueMetric);
+  if (savedTraffic.dailyCostMetric) dailyCostMetric = String(savedTraffic.dailyCostMetric);
 } catch {}
 
 try {
@@ -1009,14 +1040,23 @@ try {
     }));
   }
   if (shared?.v === 2 && Array.isArray(shared?.t)) {
-    const t = { campaignContains: shared.t[0], visibleMetrics: shared.t[1] };
+    const t = {
+      campaignContains: shared.t[0],
+      visibleMetrics: shared.t[1],
+      dailyValueMetric: shared.t[2],
+      dailyCostMetric: shared.t[3]
+    };
     campaignContains = String(t.campaignContains || '').trim();
     if (Array.isArray(t.visibleMetrics) && t.visibleMetrics.length) {
       visibleMetrics = new Set(t.visibleMetrics.map(v => String(v || '').trim()).filter(Boolean));
     }
+    if (t.dailyValueMetric) dailyValueMetric = String(t.dailyValueMetric);
+    if (t.dailyCostMetric) dailyCostMetric = String(t.dailyCostMetric);
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
-      visibleMetrics: Array.from(visibleMetrics)
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
     }));
   } else if (shared?.cfg) {
     // Compatibilidade com links antigos (v1)
@@ -1055,9 +1095,13 @@ try {
     if (Array.isArray(t.visibleMetrics) && t.visibleMetrics.length) {
       visibleMetrics = new Set(t.visibleMetrics.map(v => String(v || '').trim()).filter(Boolean));
     }
+    if (t.dailyValueMetric) dailyValueMetric = String(t.dailyValueMetric);
+    if (t.dailyCostMetric) dailyCostMetric = String(t.dailyCostMetric);
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
-      visibleMetrics: Array.from(visibleMetrics)
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
     }));
   }
 } catch {}
@@ -2082,6 +2126,21 @@ function onTopSortChange() {
   renderTrafego();
 }
 
+function onDailyMetricChange() {
+  dailyValueMetric = document.getElementById('dailyValueMetric')?.value || dailyValueMetric;
+  dailyCostMetric = document.getElementById('dailyCostMetric')?.value || dailyCostMetric;
+  try {
+    localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
+      campaignContains,
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
+    }));
+  } catch {}
+  writeSharedCfgToUrl(buildSharePayload());
+  renderTrafego();
+}
+
 function setTopSortOrder(order) {
   topSortOrder = order === 'asc' ? 'asc' : 'desc';
   document.getElementById('topSortDescBtn').classList.toggle('active', topSortOrder === 'desc');
@@ -2377,7 +2436,9 @@ function onCampaignContainsChange() {
   try {
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
-      visibleMetrics: Array.from(visibleMetrics)
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
     }));
   } catch {}
   const cfgInp = document.getElementById('defaultCampContains');
@@ -2401,7 +2462,9 @@ function ensureVisibleMetricsNotEmpty() {
   try {
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
-      visibleMetrics: Array.from(visibleMetrics)
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
     }));
   } catch {}
   return true;
@@ -2438,7 +2501,9 @@ function onVisibleMetricsChange() {
   try {
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
-      visibleMetrics: Array.from(visibleMetrics)
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
     }));
   } catch {}
   writeSharedCfgToUrl(buildSharePayload());
@@ -2457,7 +2522,9 @@ function selectAllVisibleMetrics(event) {
   try {
     localStorage.setItem(TRAFFIC_KEY, JSON.stringify({
       campaignContains,
-      visibleMetrics: Array.from(visibleMetrics)
+      visibleMetrics: Array.from(visibleMetrics),
+      dailyValueMetric,
+      dailyCostMetric
     }));
   } catch {}
   writeSharedCfgToUrl(buildSharePayload());
@@ -2654,8 +2721,43 @@ function renderTrafego() {
     byDaySpend[k] = (byDaySpend[k]||0) + getSpend(r);
   });
 
-  // Leads por dia via função centralizada
-  const byDayLeads = leadsByDay();
+  const leadRows = getTrafficLeadRows();
+  const mqlRows = leadRows.filter(isMqlRow);
+  const agRows = getStageRowsByAliases(['Contato de Confirmacao', 'Contato de Confirmação']);
+  const confRows = getStageRowsByAliases(['Call Confirmada', 'Reuniao Confirmada', 'Reunião Confirmada']);
+  const noShowRows = getStageRowsByAliases(['No-Show', 'No Show']);
+  const callRows = getStageRowsByAliases(['Call Feita']);
+
+  function countByDay(rows) {
+    const dateCol = getTrafficLeadDateCol(rows);
+    const out = {};
+    rows.forEach(r => {
+      if (!isPaidLeadRow(r)) return;
+      if (dateCol) {
+        const d = parseDate(r[dateCol]);
+        if (!inPeriod(d)) return;
+        const c = getLeadUtmCampaign(r);
+        const a = getLeadUtmContent(r);
+        const ad = getLeadUtmTerm(r);
+        if (campPattern && !normKey(c).includes(normKey(campPattern))) return;
+        if (fCamp && c !== fCamp) return;
+        if (fAdset && a !== fAdset) return;
+        if (fAd && ad !== fAd) return;
+        const k = dateKey(d);
+        out[k] = (out[k] || 0) + 1;
+      }
+    });
+    return out;
+  }
+
+  const dayMaps = {
+    leads: countByDay(leadRows),
+    mql: countByDay(mqlRows),
+    agendada: countByDay(agRows),
+    confirmada: countByDay(confRows),
+    noShow: countByDay(noShowRows),
+    callFeita: countByDay(callRows)
+  };
 
   const dates = [];
   if (filterFrom && filterTo) {
@@ -2668,14 +2770,52 @@ function renderTrafego() {
   }
 
   const labels = dates.map(k => k.slice(5));
-  const spendVals = dates.map(k => byDaySpend[k] || 0);
-  const leadVals  = dates.map(k => byDayLeads[k]  || 0);
+
+  const valueMetricMeta = {
+    leads: { label: 'Leads', sub: 'Leads captados por dia', color: '#00c9b1' },
+    mql: { label: 'MQL', sub: 'MQL por dia', color: '#4aa3ff' },
+    agendada: { label: 'Contato de Confirmação', sub: 'Contatos por dia', color: '#9b7ff4' },
+    confirmada: { label: 'Call Confirmada', sub: 'Calls confirmadas por dia', color: '#38d39f' },
+    noShow: { label: 'No-Show', sub: 'No-show por dia', color: '#ff5fa2' },
+    callFeita: { label: 'Call Feita', sub: 'Calls feitas por dia', color: '#00c9b1' }
+  };
+  const costMetricMeta = {
+    spend: { label: 'Verba (R$)', sub: 'Investimento por dia (R$)', color: '#ff4a4a', mode: 'abs' },
+    cpl: { label: 'Custo por Lead', sub: 'Verba diária ÷ Leads diários', color: '#f5c842', mode: 'div', divKey: 'leads' },
+    cpmql: { label: 'Custo por MQL', sub: 'Verba diária ÷ MQL diário', color: '#f5c842', mode: 'div', divKey: 'mql' },
+    cAgendada: { label: 'Custo Contato', sub: 'Verba diária ÷ Contato diário', color: '#f5c842', mode: 'div', divKey: 'agendada' },
+    cConfirmada: { label: 'Custo Confirmada', sub: 'Verba diária ÷ Confirmada diária', color: '#f5c842', mode: 'div', divKey: 'confirmada' },
+    cNoShow: { label: 'Custo No-Show', sub: 'Verba diária ÷ No-Show diário', color: '#f5c842', mode: 'div', divKey: 'noShow' },
+    cCallFeita: { label: 'Custo Call Feita', sub: 'Verba diária ÷ Call feita diária', color: '#f5c842', mode: 'div', divKey: 'callFeita' }
+  };
+  const safeValueMetric = valueMetricMeta[dailyValueMetric] ? dailyValueMetric : 'leads';
+  const safeCostMetric = costMetricMeta[dailyCostMetric] ? dailyCostMetric : 'spend';
+  if (safeValueMetric !== dailyValueMetric) dailyValueMetric = safeValueMetric;
+  if (safeCostMetric !== dailyCostMetric) dailyCostMetric = safeCostMetric;
+  const valueSel = document.getElementById('dailyValueMetric');
+  const costSel = document.getElementById('dailyCostMetric');
+  if (valueSel) valueSel.value = dailyValueMetric;
+  if (costSel) costSel.value = dailyCostMetric;
+
+  const valueVals = dates.map(k => (dayMaps[safeValueMetric]?.[k] || 0));
+  const costCfg = costMetricMeta[safeCostMetric];
+  const costVals = dates.map(k => {
+    const spendDay = byDaySpend[k] || 0;
+    if (costCfg.mode === 'abs') return spendDay;
+    const den = dayMaps[costCfg.divKey]?.[k] || 0;
+    return den > 0 ? (spendDay / den) : 0;
+  });
+
+  const valueSub = document.getElementById('dailyValueSub');
+  if (valueSub) valueSub.textContent = valueMetricMeta[safeValueMetric].sub;
+  const costSub = document.getElementById('dailyCostSub');
+  if (costSub) costSub.textContent = costMetricMeta[safeCostMetric].sub;
 
   if (chartSpend) chartSpend.destroy();
   chartSpend = new Chart(document.getElementById('chartSpend'), {
     type: 'bar',
-    data: { labels, datasets: [{ label:'Verba (R$)', data:spendVals,
-      backgroundColor:'rgba(255,74,74,0.25)', borderColor:'#ff4a4a', borderWidth:1.5, borderRadius:3 }]},
+    data: { labels, datasets: [{ label:costMetricMeta[safeCostMetric].label, data:costVals,
+      backgroundColor:'rgba(255,74,74,0.25)', borderColor:costMetricMeta[safeCostMetric].color, borderWidth:1.5, borderRadius:3 }]},
     options: {
       responsive:true, maintainAspectRatio:false,
       plugins: {
@@ -2694,8 +2834,8 @@ function renderTrafego() {
   if (chartLeads) chartLeads.destroy();
   chartLeads = new Chart(document.getElementById('chartLeads'), {
     type: 'bar',
-    data: { labels, datasets: [{ label:'Leads', data:leadVals,
-      backgroundColor:'rgba(0,201,177,0.25)', borderColor:'#00c9b1', borderWidth:1.5, borderRadius:3 }]},
+    data: { labels, datasets: [{ label:valueMetricMeta[safeValueMetric].label, data:valueVals,
+      backgroundColor:'rgba(0,201,177,0.25)', borderColor:valueMetricMeta[safeValueMetric].color, borderWidth:1.5, borderRadius:3 }]},
     options: {
       responsive:true, maintainAspectRatio:false,
       plugins: {
@@ -2879,6 +3019,8 @@ document.getElementById('sheetLink').value     = PUBLISHED_BASE;
 document.getElementById('campContains').value  = campaignContains;
 document.getElementById('perfSortMetric').value = perfSortMetric;
 document.getElementById('topSortMetric').value = topSortMetric;
+document.getElementById('dailyValueMetric').value = dailyValueMetric;
+document.getElementById('dailyCostMetric').value = dailyCostMetric;
 syncMetricChooserFromState();
 applyMetricColumnVisibility();
 if (!FUNNELS.some(f => f.id === activeFunnelId)) activeFunnelId = FUNNELS[0].id;
