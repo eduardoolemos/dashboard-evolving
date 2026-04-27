@@ -1099,7 +1099,19 @@ async function fetchCSV(gid, useExport=false) {
   const url = (useExport && EXPORT_BASE)
     ? EXPORT_BASE + '&gid=' + gid
     : PUBLISHED_BASE + '&gid=' + gid;
-  const res = await fetch(url);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  let res;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new Error('Tempo de resposta da planilha excedido (timeout).');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!res.ok) throw new Error('Planilha não acessível. Verifique se está publicada na web.');
   const text = await res.text();
   return parseCSV(text);
