@@ -2729,6 +2729,7 @@ if (!FUNNELS.some(f => f.id === activeFunnelId)) activeFunnelId = FUNNELS[0].id;
 applyActiveFunnelToGlobals();
 renderFunnelSelectors();
 fillConfigInputsFromGlobals();
+writeSharedCfgToUrl(buildSharePayload());
 
 loadAll();
 </script>
