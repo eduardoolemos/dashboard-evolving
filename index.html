@@ -1158,6 +1158,11 @@ function normKey(v) {
 
 function parseDate(s) {
   if (!s) return null;
+  if (typeof s === 'number' && Number.isFinite(s)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const d = new Date(excelEpoch.getTime() + Math.round(s) * 86400000);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
   s = String(s).replace(/\uFEFF/g, '').trim();
   // ISO: YYYY-MM-DD
   let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
@@ -1250,7 +1255,15 @@ function getTrafficLeadRows() {
 }
 
 function getTrafficLeadDateCol(rows) {
-  return findCol(rows[0], /^(data_hora|date|timestamp|data|criado|created)/i);
+  const keys = Object.keys(rows?.[0] || {});
+  return keys.find(k => {
+    const n = normKey(k).replace(/[\s_-]+/g, '');
+    return [
+      'data', 'datahora', 'date', 'timestamp',
+      'criado', 'created', 'datahoraconversaooriginal',
+      'datahoraprocessamento'
+    ].some(x => n.includes(x));
+  }) || '';
 }
 
 function isPaidLeadRow(r) {
