@@ -177,6 +177,9 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 .stage-row input:focus { border-color:var(--teal); }
 .btn-stage-add { background:transparent; border:1px dashed var(--border2); color:var(--teal); border-radius:8px; padding:8px 10px; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; }
 .btn-stage-remove { background:transparent; border:1px solid var(--border2); color:var(--red); border-radius:8px; padding:8px 10px; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; }
+.btn-ghost { width:100%; background:transparent; color:var(--teal); border:1px solid var(--border2); border-radius:8px; padding:11px; font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; transition:all 0.2s; margin-top:8px; }
+.btn-ghost:hover { border-color:var(--teal); background:var(--teal-dim); }
+.config-status { font-size:11px; color:var(--text2); margin-top:8px; min-height:14px; }
 .btn-load { width:100%; background:var(--teal); color:#030e0c; border:none; border-radius:8px; padding:13px; font-family:var(--font-head); font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; cursor:pointer; transition:all 0.2s; margin-top:8px; }
 .btn-load:hover { background:var(--teal2); transform:translateY(-1px); }
 .config-steps { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
@@ -271,6 +274,8 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
         <div class="stage-config-list" id="stageConfigList"></div>
         <button class="btn-stage-add" onclick="addStageConfig()">+ Adicionar etapa</button>
       </div>
+      <button class="btn-ghost" id="btnAutoGid" onclick="autoFillGidsFromSheet()">Buscar GIDs automático</button>
+      <div class="config-status" id="autoGidStatus"></div>
       <button class="btn-load" onclick="saveConfigAndLoad()">Carregar Dashboard →</button>
     </div>
   </div>
@@ -623,6 +628,93 @@ function removeStageConfig(index) {
   STAGE_CONFIGS.splice(index, 1);
   if (!STAGE_CONFIGS.length) STAGE_CONFIGS.push({ name: '', gid: '' });
   renderStageConfigs();
+}
+
+function normalizeName(v) {
+  return String(v || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function findBestGidByName(targetName, tabs) {
+  const t = normalizeName(targetName);
+  if (!t) return '';
+  const exact = tabs.find(tab => normalizeName(tab.title) === t);
+  if (exact) return exact.gid;
+  const contains = tabs.find(tab => {
+    const n = normalizeName(tab.title);
+    return n.includes(t) || t.includes(n);
+  });
+  return contains ? contains.gid : '';
+}
+
+async function fetchSheetTabs() {
+  const pubHtmlUrl = PUBLISHED_BASE.replace('/pub?output=csv', '/pubhtml');
+  const res = await fetch(pubHtmlUrl);
+  if (!res.ok) throw new Error('Não foi possível ler abas da planilha publicada.');
+  const html = await res.text();
+  const tabs = [];
+  const re = /[?&]gid=(\d+)[^>]*>\s*([^<]+)\s*</gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const gid = m[1];
+    const title = (m[2] || '').trim();
+    if (!title) continue;
+    if (!tabs.some(t => t.gid === gid && t.title === title)) tabs.push({ gid, title });
+  }
+  if (!tabs.length) throw new Error('Nenhuma aba encontrada para fazer o match de GID.');
+  return tabs;
+}
+
+async function autoFillGidsFromSheet() {
+  const btn = document.getElementById('btnAutoGid');
+  const status = document.getElementById('autoGidStatus');
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  status.textContent = 'Lendo abas da planilha e comparando nomes...';
+  try {
+    const tabs = await fetchSheetTabs();
+
+    const mapMain = [
+      { id: 'gidEtapas', aliases: ['track etapas', 'tracking etapas', 'etapas'] },
+      { id: 'gidConversoes', aliases: ['conversoes', 'conversões'] },
+      { id: 'gidAds', aliases: ['extracao gerenciador', 'extração gerenciador', 'meta ads', 'gerenciador'] }
+    ];
+
+    let matched = 0;
+    mapMain.forEach(item => {
+      const current = document.getElementById(item.id).value.trim();
+      if (current) return;
+      for (const alias of item.aliases) {
+        const gid = findBestGidByName(alias, tabs);
+        if (gid) {
+          document.getElementById(item.id).value = gid;
+          matched++;
+          break;
+        }
+      }
+    });
+
+    STAGE_CONFIGS = STAGE_CONFIGS.map(s => {
+      if ((s.gid || '').trim()) return s;
+      const gid = findBestGidByName(s.name, tabs);
+      if (gid) matched++;
+      return { ...s, gid: gid || s.gid };
+    });
+    renderStageConfigs();
+
+    status.textContent = matched
+      ? `GIDs preenchidos automaticamente: ${matched}.`
+      : 'Nenhum GID novo encontrado por nome. Revise os nomes das etapas.';
+  } catch (e) {
+    status.textContent = `Falha ao buscar GIDs: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Buscar GIDs automático';
+  }
 }
 
 // ── CSV FETCH ──────────────────────────
