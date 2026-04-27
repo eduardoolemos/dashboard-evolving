@@ -1523,7 +1523,8 @@ async function loadAll() {
     await Promise.all(jobs);
 
     renderFunil(RAW.etapas);
-    renderConversoes(RAW.conv);
+    const convRowsForView = RAW.conv.length ? RAW.conv : getTrafficLeadRows();
+    renderConversoes(convRowsForView);
     setPeriodSilent(30);
     rebuildAllFilters();
 
@@ -1707,7 +1708,7 @@ function renderFunil(rows) {
 // ════════════════════════════════════════════════════════════════════════
 function renderConversoes(rows) {
   if (!rows.length) {
-    document.getElementById('kpiConversoes').innerHTML = '<div style="color:var(--text2);font-size:13px;grid-column:span 4;padding:20px 0;">Configure a aba CONVERSOES no painel Config.</div>';
+    document.getElementById('kpiConversoes').innerHTML = '<div style="color:var(--text2);font-size:13px;grid-column:span 4;padding:20px 0;">Sem dados na aba CONVERSOES e também sem dados na Entrada Typebot para fallback.</div>';
     return;
   }
 
