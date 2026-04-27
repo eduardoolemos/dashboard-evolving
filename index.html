@@ -396,17 +396,29 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
 
   <!-- TAB CONVERSÕES -->
   <div id="tabConversoes" style="display:none;">
+    <div class="filter-bar" style="margin-bottom:12px;">
+      <div class="filter-row">
+        <span class="filter-label">Data:</span>
+        <div class="date-inputs">
+          <input class="date-inp" type="date" id="convDateFrom">
+          <span style="color:var(--text3)">→</span>
+          <input class="date-inp" type="date" id="convDateTo">
+          <button class="period-tab active" onclick="applyConversoesDateFilter()">Aplicar</button>
+          <button class="period-tab" onclick="clearConversoesDateFilter()">Limpar</button>
+        </div>
+      </div>
+    </div>
     <div class="kpi-grid" id="kpiConversoes"></div>
     <div class="grid-2" style="margin-bottom:16px;">
       <div class="card">
-        <div class="card-title">Perfil dos Leads</div>
-        <div class="card-sub">Classificação por gasto estimado</div>
+        <div class="card-title">Prioridade</div>
+        <div class="card-sub">Contagem por resposta</div>
         <div class="chart-wrap" style="height:220px;">
           <canvas id="chartPerfis"></canvas>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Qtd. Assinaturas</div>
+        <div class="card-title">Situação Financeira</div>
         <div class="card-sub">Distribuição das respostas</div>
         <div class="chart-wrap" style="height:220px;">
           <canvas id="chartAssinaturas"></canvas>
@@ -415,13 +427,13 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
     </div>
     <div class="grid-2" style="margin-bottom:16px;">
       <div class="card">
-        <div class="card-title">Controle de Gastos</div>
-        <div class="card-sub">Nível de consciência financeira</div>
+        <div class="card-title">Urgência</div>
+        <div class="card-sub">Contagem por resposta</div>
         <div id="controleGastos"></div>
       </div>
       <div class="card">
-        <div class="card-title">Top Campanhas</div>
-        <div class="card-sub">Por conversões geradas</div>
+        <div class="card-title">Estoque</div>
+        <div class="card-sub">Contagem por resposta</div>
         <div id="campanhasConv"></div>
       </div>
     </div>
@@ -431,7 +443,7 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Nome</th><th>Email</th><th>Telefone</th><th>Lead Score</th><th>Diagnóstico</th><th>Perfil</th><th>Assinaturas</th><th>Campanha</th><th>Data</th>
+            <th>Nome</th><th>Email</th><th>Telefone</th><th>Prioridade</th><th>Situação Financeira</th><th>Urgência</th><th>Estoque</th><th>Faturamento Lojista</th><th>Campanha</th><th>Data</th>
           </tr></thead>
           <tbody id="bodyConversoes"></tbody>
         </table>
@@ -833,8 +845,10 @@ const DEFAULT_VISIBLE_METRICS = [
 let visibleMetrics = new Set(DEFAULT_VISIBLE_METRICS);
 
 let RAW = { etapas:[], conv:[], ads:[], stages:{} };
+let RAW_CONV_VIEW = [];
 let filterFrom = null, filterTo = null;
 let campaignContains = '';
+let convDateFrom = null, convDateTo = null;
 
 function encodeShareCfg(payload) {
   try {
@@ -1132,6 +1146,7 @@ function switchTab(tab) {
   document.getElementById('configScreen').style.display   = tab==='config'      ? 'block' : 'none';
   document.getElementById('loadingScreen').style.display  = 'none';
   if (tab === 'trafego') renderTrafego();
+  if (tab === 'conversoes') renderConversoes(RAW_CONV_VIEW);
 }
 
 function getActiveFunnel() {
@@ -1523,8 +1538,8 @@ async function loadAll() {
     await Promise.all(jobs);
 
     renderFunil(RAW.etapas);
-    const convRowsForView = RAW.conv.length ? RAW.conv : getTrafficLeadRows();
-    renderConversoes(convRowsForView);
+    RAW_CONV_VIEW = RAW.conv.length ? RAW.conv : getTrafficLeadRows();
+    renderConversoes(RAW_CONV_VIEW);
     setPeriodSilent(30);
     rebuildAllFilters();
 
@@ -1706,20 +1721,42 @@ function renderFunil(rows) {
 // ════════════════════════════════════════════════════════════════════════
 // RENDER CONVERSÕES
 // ════════════════════════════════════════════════════════════════════════
+function getConversoesDateCol(rows) {
+  const keys = Object.keys(rows?.[0] || {});
+  return keys.find(k => {
+    const n = normalizeName(k).replace(/\s+/g, '');
+    return ['data', 'datahora', 'date', 'timestamp', 'criado', 'created'].some(x => n.includes(x));
+  }) || '';
+}
+
+function applyConversoesDateFilter() {
+  const fromRaw = document.getElementById('convDateFrom')?.value || '';
+  const toRaw = document.getElementById('convDateTo')?.value || '';
+  convDateFrom = fromRaw ? new Date(fromRaw + 'T00:00:00') : null;
+  convDateTo = toRaw ? new Date(toRaw + 'T23:59:59') : null;
+  renderConversoes(RAW_CONV_VIEW);
+}
+
+function clearConversoesDateFilter() {
+  convDateFrom = null;
+  convDateTo = null;
+  const f = document.getElementById('convDateFrom');
+  const t = document.getElementById('convDateTo');
+  if (f) f.value = '';
+  if (t) t.value = '';
+  renderConversoes(RAW_CONV_VIEW);
+}
+
 function renderConversoes(rows) {
   if (!rows.length) {
     document.getElementById('kpiConversoes').innerHTML = '<div style="color:var(--text2);font-size:13px;grid-column:span 4;padding:20px 0;">Sem dados na aba CONVERSOES e também sem dados na Entrada Typebot para fallback.</div>';
     return;
   }
-
   function normalizeEmail(v) {
     return String(v || '').trim().toLowerCase();
   }
   function normalizePhone(v) {
     return String(v || '').replace(/\D+/g, '');
-  }
-  function parseMoney(v) {
-    return parseFloat(String(v || '').replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
   }
   function getFieldByAliases(row, aliases) {
     const keys = Object.keys(row || {});
@@ -1729,50 +1766,6 @@ function renderConversoes(rows) {
       if (wanted.includes(nk)) return String(row[k] || '').trim();
     }
     return '';
-  }
-  function scoreFromRow(r) {
-    const prioridade = normalizeName(getFieldByAliases(r, ['Prioridade']));
-    const situacaoFinanceira = normalizeName(getFieldByAliases(r, ['Situação Financeira', 'Situacao Financeira']));
-    const urgencia = normalizeName(getFieldByAliases(r, ['Urgência', 'Urgencia']));
-    const estoque = normalizeName(getFieldByAliases(r, ['Estoque']));
-    const faturamentoTxt = getFieldByAliases(r, ['Faturamento lojista', 'Faturamento']);
-
-    const scorePrioridade = !prioridade ? 0
-      : (prioridade.includes('alta') || prioridade.includes('maxima')) ? 100
-      : prioridade.includes('media') ? 65
-      : prioridade.includes('baixa') ? 35
-      : 60;
-
-    const scoreSituacao = !situacaoFinanceira ? 0
-      : (situacaoFinanceira.includes('boa') || situacaoFinanceira.includes('estavel') || situacaoFinanceira.includes('organizada')) ? 100
-      : situacaoFinanceira.includes('media') || situacaoFinanceira.includes('regular') ? 65
-      : situacaoFinanceira.includes('ruim') || situacaoFinanceira.includes('critica') ? 35
-      : 60;
-
-    const scoreUrgencia = !urgencia ? 0
-      : (urgencia.includes('alta') || urgencia.includes('urgente') || urgencia.includes('imediata')) ? 100
-      : urgencia.includes('media') ? 65
-      : urgencia.includes('baixa') ? 35
-      : 60;
-
-    const scoreEstoque = !estoque ? 0
-      : (estoque.includes('baixo') || estoque.includes('zerado') || estoque.includes('critico')) ? 100
-      : estoque.includes('medio') ? 65
-      : (estoque.includes('alto') || estoque.includes('ok')) ? 35
-      : 60;
-
-    const faturamento = parseMoney(faturamentoTxt);
-    const scoreFaturamento = !faturamentoTxt ? 0
-      : faturamento >= 100000 ? 100
-      : faturamento >= 50000 ? 85
-      : faturamento >= 20000 ? 70
-      : faturamento >= 10000 ? 55
-      : faturamento > 0 ? 35
-      : 20;
-
-    // Média percentual das 5 dimensões do Typebot (0-100)
-    const score = Math.round((scorePrioridade + scoreSituacao + scoreUrgencia + scoreEstoque + scoreFaturamento) / 5);
-    return Math.max(0, Math.min(100, score));
   }
 
   const typebotRows = getTrafficLeadRows();
@@ -1785,56 +1778,78 @@ function renderConversoes(rows) {
     if (ph) byPhone.set(ph, r);
   });
 
-  const scoredRows = rows.map(r => {
+  const enrichedRows = rows.map(r => {
     const em = normalizeEmail(r.email);
     const ph = normalizePhone(r.telefone);
     const src = byEmail.get(em) || byPhone.get(ph) || r;
-    return { ...r, lead_score: scoreFromRow(src) };
+    return {
+      ...r,
+      prioridade: getFieldByAliases(src, ['Prioridade']),
+      situacao_financeira: getFieldByAliases(src, ['Situação Financeira', 'Situacao Financeira']),
+      urgencia: getFieldByAliases(src, ['Urgência', 'Urgencia']),
+      estoque: getFieldByAliases(src, ['Estoque']),
+      faturamento_lojista: getFieldByAliases(src, ['Faturamento lojista', 'Faturamento'])
+    };
   });
 
-  const total = scoredRows.length;
-  const diagVals = scoredRows.map(r => parseFloat((r.diagnostico_rs||'').replace('R$ ',''))||0).filter(v=>v>0);
-  const diagMedio = diagVals.length ? Math.round(diagVals.reduce((a,b)=>a+b,0)/diagVals.length) : 0;
-  const diagMax = Math.max(...diagVals, 0);
-  const scoreMedio = Math.round(scoredRows.reduce((a,b) => a + (b.lead_score || 0), 0) / Math.max(1, scoredRows.length));
-  const perfis = { 'Crítico':0, 'Alto gasto':0, 'Atenção':0, 'Controlado':0 };
-  scoredRows.forEach(r => { const p=(r.perfil_lead||'').replace(/[🟢🟡🟠🔴]\s*/,''); if(perfis[p]!==undefined) perfis[p]++; });
-  const criticos = (perfis['Crítico']||0) + (perfis['Alto gasto']||0);
+  const dateCol = getConversoesDateCol(enrichedRows);
+  const filteredRows = enrichedRows.filter(r => {
+    if (!dateCol || (!convDateFrom && !convDateTo)) return true;
+    const d = parseDate(r[dateCol]);
+    if (!d) return false;
+    if (convDateFrom && d < convDateFrom) return false;
+    if (convDateTo && d > convDateTo) return false;
+    return true;
+  });
+  if (!filteredRows.length) {
+    document.getElementById('kpiConversoes').innerHTML = '<div style="color:var(--text2);font-size:13px;grid-column:span 4;padding:20px 0;">Sem dados para o período selecionado.</div>';
+    document.getElementById('controleGastos').innerHTML = '';
+    document.getElementById('campanhasConv').innerHTML = '';
+    document.getElementById('bodyConversoes').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
+    return;
+  }
+
+  const total = filteredRows.length;
+  const respondedPrior = filteredRows.filter(r => (r.prioridade || '').trim()).length;
+  const respondedSit = filteredRows.filter(r => (r.situacao_financeira || '').trim()).length;
+  const respondedUrg = filteredRows.filter(r => (r.urgencia || '').trim()).length;
+  const respondedEst = filteredRows.filter(r => (r.estoque || '').trim()).length;
 
   document.getElementById('kpiConversoes').innerHTML = `
     <div class="kpi-card teal">
       <div class="kpi-label">Total de Leads</div>
       <div class="kpi-value teal">${total}</div>
-      <div class="kpi-sub">conversões completas</div>
+      <div class="kpi-sub">linhas no período</div>
     </div>
     <div class="kpi-card gold">
-      <div class="kpi-label">Diag. Médio</div>
-      <div class="kpi-value gold">R$ ${diagMedio}</div>
-      <div class="kpi-sub">gasto médio estimado/mês</div>
+      <div class="kpi-label">Resp. Prioridade</div>
+      <div class="kpi-value gold">${Math.round((respondedPrior/Math.max(1,total))*100)}%</div>
+      <div class="kpi-sub">${respondedPrior} de ${total}</div>
     </div>
     <div class="kpi-card red">
-      <div class="kpi-label">Leads Críticos</div>
-      <div class="kpi-value red">${criticos}</div>
-      <div class="kpi-sub">alto gasto ou crítico</div>
+      <div class="kpi-label">Resp. Sit. Financeira</div>
+      <div class="kpi-value red">${Math.round((respondedSit/Math.max(1,total))*100)}%</div>
+      <div class="kpi-sub">${respondedSit} de ${total}</div>
     </div>
     <div class="kpi-card purple">
-      <div class="kpi-label">Lead Score Médio (%)</div>
-      <div class="kpi-value purple">${scoreMedio}%</div>
-      <div class="kpi-sub">média das respostas do Typebot</div>
+      <div class="kpi-label">Resp. Urgência / Estoque</div>
+      <div class="kpi-value purple">${Math.round((((respondedUrg+respondedEst)/2)/Math.max(1,total))*100)}%</div>
+      <div class="kpi-sub">${respondedUrg} urgência · ${respondedEst} estoque</div>
     </div>`;
 
-  const perfisLabels = ['🔴 Crítico','🟠 Alto gasto','🟡 Atenção','🟢 Controlado'];
-  const perfisData   = scoredRows.reduce((acc, r) => {
-    const raw = r.perfil_lead || '';
-    perfisLabels.forEach((l,i) => { if (raw.includes(l.replace(/[🟢🟡🟠🔴]\s*/,'').trim())) acc[i]++; });
-    return acc;
-  }, [0,0,0,0]);
+  const prioridadeCount = {};
+  filteredRows.forEach(r => {
+    const v = (r.prioridade || '?').trim() || '?';
+    prioridadeCount[v] = (prioridadeCount[v] || 0) + 1;
+  });
+  const perfisLabels = Object.keys(prioridadeCount);
+  const perfisData = perfisLabels.map(k => prioridadeCount[k]);
   if (chartPerfis) chartPerfis.destroy();
   chartPerfis = new Chart(document.getElementById('chartPerfis'), {
     type: 'bar',
     data: {
       labels: perfisLabels,
-      datasets: [{ data: perfisData, backgroundColor: ['#ff4a4a','#ff8a4a','#f5c842','#00c9b1'], borderRadius: 6, borderWidth: 0 }]
+      datasets: [{ data: perfisData, backgroundColor: '#7f8caa', borderRadius: 6, borderWidth: 0 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -1847,13 +1862,16 @@ function renderConversoes(rows) {
   });
 
   const assMap = {};
-  scoredRows.forEach(r => { const a=r.q1_assinaturas||'?'; assMap[a]=(assMap[a]||0)+1; });
+  filteredRows.forEach(r => {
+    const a = r.situacao_financeira || '?';
+    assMap[a] = (assMap[a] || 0) + 1;
+  });
   if (chartAssign) chartAssign.destroy();
   chartAssign = new Chart(document.getElementById('chartAssinaturas'), {
     type: 'doughnut',
     data: {
       labels: Object.keys(assMap),
-      datasets: [{ data: Object.values(assMap), backgroundColor:['#00c9b1','#9b7ff4','#f5c842','#ff4a4a'], borderWidth:0, hoverOffset:4 }]
+      datasets: [{ data: Object.values(assMap), backgroundColor:['#7f8caa','#9aa6c2','#5a6378','#c7cfdf'], borderWidth:0, hoverOffset:4 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -1864,11 +1882,14 @@ function renderConversoes(rows) {
   });
 
   const ctrlMap = {};
-  scoredRows.forEach(r => { const c=r.q2_controle||'?'; ctrlMap[c]=(ctrlMap[c]||0)+1; });
+  filteredRows.forEach(r => {
+    const c = r.urgencia || '?';
+    ctrlMap[c] = (ctrlMap[c] || 0) + 1;
+  });
   const maxCtrl = Math.max(...Object.values(ctrlMap),1);
-  const ctrlColors = { '✅ Sabe exatamente':'var(--teal)', '🤔 Tem uma noção':'var(--gold)', '😅 Não acompanha':'var(--red)', '😬 Prefere não saber':'var(--purple)' };
+  const ctrlColors = { 'Alta':'var(--red)', 'Média':'var(--gold)', 'Baixa':'var(--teal)', '?':'var(--text2)' };
   document.getElementById('controleGastos').innerHTML = Object.entries(ctrlMap).sort((a,b)=>b[1]-a[1]).map(([c,n]) => {
-    const cor = Object.entries(ctrlColors).find(([k]) => c.includes(k.replace(/[✅🤔😅😬]\s*/,'')))?.[1] || 'var(--teal)';
+    const cor = Object.entries(ctrlColors).find(([k]) => normalizeName(c).includes(normalizeName(k)))?.[1] || 'var(--teal)';
     return `<div class="prog-row">
       <div class="prog-label">${c}</div>
       <div class="prog-bar-wrap"><div class="prog-bar" style="width:${((n/maxCtrl)*100).toFixed(0)}%;background:${cor};"></div></div>
@@ -1876,9 +1897,12 @@ function renderConversoes(rows) {
     </div>`;
   }).join('');
 
-  const campConv = {};
-  scoredRows.forEach(r => { const c=r.utm_campaign||'(direto)'; campConv[c]=(campConv[c]||0)+1; });
-  const sortedConv = Object.entries(campConv).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const estoqueMap = {};
+  filteredRows.forEach(r => {
+    const c = r.estoque || '?';
+    estoqueMap[c] = (estoqueMap[c] || 0) + 1;
+  });
+  const sortedConv = Object.entries(estoqueMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxCC = sortedConv[0]?.[1]||1;
   document.getElementById('campanhasConv').innerHTML = sortedConv.map(([c,n]) => `
     <div class="prog-row">
@@ -1887,26 +1911,20 @@ function renderConversoes(rows) {
       <div class="prog-val">${n}</div>
     </div>`).join('');
 
-  const ultimasConv = [...scoredRows].sort((a,b)=>(b.data_hora||'').localeCompare(a.data_hora||'')).slice(0,10);
-  const perfilColor = p => {
-    if (!p) return 'var(--text2)';
-    if (p.includes('Crítico'))    return 'var(--red)';
-    if (p.includes('Alto'))       return '#ff8a4a';
-    if (p.includes('Atenção'))    return 'var(--gold)';
-    if (p.includes('Controlado')) return 'var(--teal)';
-    return 'var(--text2)';
-  };
+  const sortDateKey = dateCol || 'data_hora';
+  const ultimasConv = [...filteredRows].sort((a,b)=>(String(b[sortDateKey]||'')).localeCompare(String(a[sortDateKey]||''))).slice(0,10);
   document.getElementById('bodyConversoes').innerHTML = ultimasConv.map(r => `<tr>
     <td>${r.nome||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.email||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;">${r.telefone||'—'}</td>
-    <td style="color:var(--purple);font-family:var(--font-mono);font-weight:600;">${(r.lead_score ?? 0)}%</td>
-    <td style="color:var(--teal);font-family:var(--font-head);font-weight:700;">${r.diagnostico_rs||'—'}</td>
-    <td><span style="color:${perfilColor(r.perfil_lead)};font-size:12px;">${r.perfil_lead||'—'}</span></td>
-    <td style="font-size:12px;color:var(--text2);">${r.q1_assinaturas||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);">${r.prioridade||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);">${r.situacao_financeira||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);">${r.urgencia||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);">${r.estoque||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);">${r.faturamento_lojista||'—'}</td>
     <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${r.utm_campaign||'(direto)'}</td>
-    <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${(r.data_hora||'').slice(0,16)||'—'}</td>
-  </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
+    <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${String(r[sortDateKey]||'').slice(0,16)||'—'}</td>
+  </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--text2);padding:24px;">Sem dados</td></tr>';
 }
 
 // ════════════════════════════════════════════════════════════════════════
