@@ -1307,6 +1307,42 @@ function getTrafficLeadStats() {
   return { leads, mql };
 }
 
+function getStageRowsByAliases(aliases) {
+  const out = [];
+  const normalizedAliases = aliases.map(a => normalizeName(a));
+  STAGE_CONFIGS.forEach(s => {
+    const gid = String(s.gid || '').trim();
+    if (!gid) return;
+    const stageName = normalizeName(s.name || '');
+    if (!normalizedAliases.some(a => stageName.includes(a) || a.includes(stageName))) return;
+    const rows = RAW.stages[gid] || [];
+    if (rows.length) out.push(...rows);
+  });
+  return out;
+}
+
+function countStageInPeriod(rows, filters) {
+  if (!rows.length) return 0;
+  const dateCol = getTrafficLeadDateCol(rows);
+  let count = 0;
+  rows.forEach(r => {
+    if (!isPaidLeadRow(r)) return;
+    if (dateCol) {
+      const d = parseDate(r[dateCol]);
+      if (!inPeriod(d)) return;
+    }
+    const c = (r.utm_campaign || '').trim();
+    const a = (r.utm_content || '').trim();
+    const ad = (r.utm_term || '').trim();
+    if (filters.campPattern && !normKey(c).includes(normKey(filters.campPattern))) return;
+    if (filters.fCamp && c !== filters.fCamp) return;
+    if (filters.fAdset && a !== filters.fAdset) return;
+    if (filters.fAd && ad !== filters.fAd) return;
+    count++;
+  });
+  return count;
+}
+
 // ── Leads por dia (para gráfico) — apenas leads pagos válidos ──
 function leadsByDay() {
   const rows = getTrafficLeadRows();
@@ -1637,11 +1673,18 @@ function renderTrafego() {
   const cpmql    = mql > 0 && spend > 0 ? spend / mql : 0;
   const convRate = clicks > 0 && leads > 0 ? leads / clicks * 100 : 0;
 
-  const filterDesc = [
-    fCamp  && `Camp: ${fCamp}`,
-    fAdset && `Conj: ${fAdset}`,
-    fAd    && `An: ${fAd}`,
-  ].filter(Boolean).join(' · ') || 'Todas';
+  const agendadas = countStageInPeriod(
+    getStageRowsByAliases(['Contato de Confirmacao', 'Contato de Confirmação']),
+    { fCamp, fAdset, fAd, campPattern }
+  );
+  const confirmadas = countStageInPeriod(
+    getStageRowsByAliases(['Call Confirmada', 'Reuniao Confirmada', 'Reunião Confirmada']),
+    { fCamp, fAdset, fAd, campPattern }
+  );
+  const callFeita = countStageInPeriod(
+    getStageRowsByAliases(['Call Feita']),
+    { fCamp, fAdset, fAd, campPattern }
+  );
 
   document.getElementById('kpiTrafego').innerHTML = `
     <div class="kpi-card red">
@@ -1689,10 +1732,20 @@ function renderTrafego() {
       <div class="kpi-value purple">${convRate > 0 ? pct(convRate) : '—'}</div>
       <div class="kpi-sub">${fmt(leads)} de ${fmt(clicks)} cliques</div>
     </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Reunião Agendada</div>
+      <div class="kpi-value purple">${fmt(agendadas)}</div>
+      <div class="kpi-sub">etapa: contato de confirmação</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">Reunião Confirmada</div>
+      <div class="kpi-value teal">${fmt(confirmadas)}</div>
+      <div class="kpi-sub">etapa: call confirmada</div>
+    </div>
     <div class="kpi-card red">
-      <div class="kpi-label">Filtro Ativo</div>
-      <div class="kpi-value red tiny" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${filterDesc}">${filterDesc}</div>
-      <div class="kpi-sub">${dateKey(filterFrom).slice(5)} → ${dateKey(filterTo).slice(5)}</div>
+      <div class="kpi-label">Call Feita</div>
+      <div class="kpi-value red">${fmt(callFeita)}</div>
+      <div class="kpi-sub">etapa: call feita</div>
     </div>
   `;
 
