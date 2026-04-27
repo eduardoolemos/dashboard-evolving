@@ -332,6 +332,8 @@ tbody td { padding:11px 12px; font-size:13px; color:var(--text); }
       </div>
       <button type="button" class="btn-ghost" id="btnAutoGid" onclick="autoFillGidsFromSheet()">Buscar GIDs automático</button>
       <div class="config-status" id="autoGidStatus"></div>
+      <button type="button" class="btn-ghost" id="btnShortLink" onclick="generateShortShareLink()">Gerar link curto</button>
+      <div class="config-status" id="shortLinkStatus"></div>
       <button class="btn-load" onclick="saveConfigAndLoad()">Carregar Dashboard →</button>
     </div>
   </div>
@@ -837,6 +839,61 @@ function writeSharedCfgToUrl(payload) {
     u.searchParams.set('cfg', encoded);
     window.history.replaceState({}, '', u.toString());
   } catch {}
+}
+
+async function copyToClipboard(text) {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', 'readonly');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch {}
+  return false;
+}
+
+async function generateShortShareLink() {
+  const status = document.getElementById('shortLinkStatus');
+  const btn = document.getElementById('btnShortLink');
+  if (status) status.textContent = 'Gerando link curto...';
+  if (btn) btn.disabled = true;
+  try {
+    writeSharedCfgToUrl(buildSharePayload());
+    const longUrl = window.location.href;
+    const endpoint = `https://api.shrtco.de/v2/shorten?url=${encodeURIComponent(longUrl)}`;
+    const res = await fetch(endpoint);
+    const data = await res.json();
+    if (!res.ok || !data?.ok || !data?.result?.full_short_link) {
+      throw new Error('Serviço de encurtamento indisponível.');
+    }
+    const shortUrl = data.result.full_short_link;
+    const copied = await copyToClipboard(shortUrl);
+    if (status) {
+      status.textContent = copied
+        ? `Link curto copiado: ${shortUrl}`
+        : `Link curto gerado: ${shortUrl}`;
+    }
+  } catch (e) {
+    const copiedLong = await copyToClipboard(window.location.href);
+    if (status) {
+      status.textContent = copiedLong
+        ? 'Não foi possível encurtar agora. Copiei o link completo.'
+        : `Falha ao gerar link curto: ${e.message || 'erro desconhecido'}`;
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function buildSharePayload() {
