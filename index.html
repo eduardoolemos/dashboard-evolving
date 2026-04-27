@@ -1909,13 +1909,6 @@ function filterByTopRow(level, name) {
   const adsetSel = document.getElementById('adsetSelect');
   const adSel = document.getElementById('adSelect');
 
-  function setSelectValueIfExists(sel, value) {
-    if (!sel) return;
-    if (!value) { sel.value = ''; return; }
-    const has = Array.from(sel.options || []).some(o => o.value === value);
-    sel.value = has ? value : '';
-  }
-
   if (level === 'adset') {
     if (adsetSel) {
       const isSame = adsetSel.value === name;
@@ -1925,11 +1918,11 @@ function filterByTopRow(level, name) {
         return;
       }
     }
-    const row = RAW.ads.find(r => getAdsetName(r) === name && inPeriod(parseDate(getAdsDate(r))));
-    const campName = row ? getCampName(row) : '';
-    setSelectValueIfExists(campSel, campName);
+    // Filtro simples: aplica apenas conjunto
+    if (campSel) campSel.value = '';
+    if (adSel) adSel.value = '';
     rebuildAllFilters();
-    setSelectValueIfExists(adsetSel, name);
+    if (adsetSel) adsetSel.value = name;
     onAdsetChange();
     return;
   }
@@ -1943,14 +1936,11 @@ function filterByTopRow(level, name) {
         return;
       }
     }
-    const row = RAW.ads.find(r => getAdName(r) === name && inPeriod(parseDate(getAdsDate(r))));
-    const campName = row ? getCampName(row) : '';
-    const adsetName = row ? getAdsetName(row) : '';
-    setSelectValueIfExists(campSel, campName);
+    // Filtro simples: aplica apenas anúncio
+    if (campSel) campSel.value = '';
+    if (adsetSel) adsetSel.value = '';
     rebuildAllFilters();
-    setSelectValueIfExists(adsetSel, adsetName);
-    rebuildAllFilters();
-    setSelectValueIfExists(adSel, name);
+    if (adSel) adSel.value = name;
     renderTrafego();
   }
 }
